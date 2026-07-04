@@ -9,7 +9,7 @@
 - MySQL
 - Knife4j
 
-当前阶段只初始化文档、目录结构和 SQL 草案，暂不创建正式 Spring Boot 项目，暂不编写正式后端业务代码。
+当前阶段已创建 Spring Boot 后端 MVP Phase 1，先实现任务创建、分页查询和详情查询。
 
 ## 模块规划
 
@@ -32,6 +32,10 @@
 - 交付总结生成。
 - Markdown 导出。
 
-## 暂不创建正式代码
+## 本地验证
 
-本目录当前仅用于说明后端规划。后续开始编码时，再创建标准 Spring Boot 工程结构，并按 README 和 docs 中的设计逐步实现。
+```bash
+mvn test
+```
+
+启动服务前需先创建 MySQL 数据库并执行 `../sql/schema.sql`，再按环境调整 `src/main/resources/application.yml` 中的数据源配置。
