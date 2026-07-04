@@ -12,7 +12,7 @@
 验收标准：
 
 - README 能说明项目定位、MVP 范围、技术栈和暂不做内容。
-- `docs/` 下包含项目定位、MVP、数据库、API、状态机、模板匹配和开发计划。
+- `docs/` 下包含项目定位、MVP、数据库、API、状态机、模板匹配、开发计划、核心业务流程、Prompt 生成规则、Markdown 交付记录模板和开发前确认。
 - `sql/schema.sql` 能表达核心表结构。
 - `backend/README.md` 和 `frontend/README.md` 说明后续建设方向。
 
