@@ -9,17 +9,25 @@
         </div>
       </div>
       <el-menu :default-active="activeMenu" router class="nav-menu">
+        <el-menu-item index="/dashboard">
+          <el-icon><DataBoard /></el-icon>
+          <span>概览</span>
+        </el-menu-item>
         <el-menu-item index="/tasks">
           <el-icon><Tickets /></el-icon>
           <span>任务管理</span>
+        </el-menu-item>
+        <el-menu-item index="/templates">
+          <el-icon><Collection /></el-icon>
+          <span>Workflow 模板</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
 
     <el-container>
       <el-header class="app-header">
-        <div class="header-title">AI 开发工作流管理平台</div>
-        <el-tag effect="plain" type="info">MVP 主链路</el-tag>
+        <div class="header-title">{{ currentTitle }}</div>
+        <el-tag effect="plain" type="info">Mock 优先</el-tag>
       </el-header>
       <el-main class="app-main">
         <RouterView />
@@ -31,8 +39,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Tickets } from '@element-plus/icons-vue'
+import { Collection, DataBoard, Tickets } from '@element-plus/icons-vue'
 
 const route = useRoute()
-const activeMenu = computed(() => (route.path.startsWith('/tasks') ? '/tasks' : route.path))
+const activeMenu = computed(() => {
+  if (route.path.startsWith('/dashboard')) return '/dashboard'
+  if (route.path.startsWith('/templates')) return '/templates'
+  return '/tasks'
+})
+const currentTitle = computed(() => (route.meta.title as string) || 'AI 开发工作流管理平台')
 </script>

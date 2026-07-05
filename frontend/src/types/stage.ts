@@ -6,10 +6,16 @@ export interface WorkflowStage {
   templateStageId: number
   stageKey: string
   stageName: string
+  stageGoal?: string
+  required?: boolean
   stageOrder: number
   status: StageStatus
   startedAt?: string | null
   completedAt?: string | null
+  outputSummary?: string
+  riskPoints?: string
+  nextActions?: string
+  unverifiedScope?: string
 }
 
 export interface StageInitResponse {

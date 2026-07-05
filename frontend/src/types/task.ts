@@ -28,14 +28,15 @@ export interface Task {
   complexity: Complexity
   riskTags: RiskTag[]
   status: TaskStatus
+  matchedTemplateId?: number | null
+  matchedTemplateName?: string | null
+  testChecklistGenerated?: boolean | null
   createdAt: string
   updatedAt: string
 }
 
 export interface TaskDetail extends Task {
-  matchedTemplateId?: number | null
   deliveryRecordId?: number | null
-  testChecklistGenerated?: boolean | null
 }
 
 export interface TaskQuery {
