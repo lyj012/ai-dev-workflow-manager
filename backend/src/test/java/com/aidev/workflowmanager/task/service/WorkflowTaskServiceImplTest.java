@@ -6,6 +6,7 @@ import com.aidev.workflowmanager.common.enums.TaskStatus;
 import com.aidev.workflowmanager.common.enums.TaskType;
 import com.aidev.workflowmanager.common.exception.BusinessException;
 import com.aidev.workflowmanager.common.page.PageResult;
+import com.aidev.workflowmanager.stage.mapper.WorkflowStageMapper;
 import com.aidev.workflowmanager.task.dto.CreateTaskRequest;
 import com.aidev.workflowmanager.task.dto.TaskPageQuery;
 import com.aidev.workflowmanager.task.entity.WorkflowTask;
@@ -13,6 +14,7 @@ import com.aidev.workflowmanager.task.mapper.WorkflowTaskMapper;
 import com.aidev.workflowmanager.task.service.impl.WorkflowTaskServiceImpl;
 import com.aidev.workflowmanager.task.vo.TaskDetailResponse;
 import com.aidev.workflowmanager.task.vo.TaskResponse;
+import com.aidev.workflowmanager.template.mapper.WorkflowTemplateMapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,11 +39,17 @@ class WorkflowTaskServiceImplTest {
     @Mock
     private WorkflowTaskMapper workflowTaskMapper;
 
+    @Mock
+    private WorkflowTemplateMapper workflowTemplateMapper;
+
+    @Mock
+    private WorkflowStageMapper workflowStageMapper;
+
     private WorkflowTaskServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new WorkflowTaskServiceImpl(workflowTaskMapper);
+        service = new WorkflowTaskServiceImpl(workflowTaskMapper, workflowTemplateMapper, workflowStageMapper);
     }
 
     @Test
@@ -103,6 +111,7 @@ class WorkflowTaskServiceImplTest {
         task.setDeliveryRecordId(30L);
         task.setTestChecklistGenerated(true);
         when(workflowTaskMapper.selectOne(any(Wrapper.class))).thenReturn(task);
+        when(workflowStageMapper.selectList(any(Wrapper.class))).thenReturn(Collections.emptyList());
 
         TaskDetailResponse response = service.detail(3L);
 
@@ -117,6 +126,7 @@ class WorkflowTaskServiceImplTest {
         WorkflowTask task = sampleTask(4L);
         task.setRiskTags(null);
         when(workflowTaskMapper.selectOne(any(Wrapper.class))).thenReturn(task);
+        when(workflowStageMapper.selectList(any(Wrapper.class))).thenReturn(Collections.emptyList());
 
         TaskDetailResponse response = service.detail(4L);
 

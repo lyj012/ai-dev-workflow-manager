@@ -1,15 +1,19 @@
 package com.aidev.workflowmanager.task.vo;
 
 import com.aidev.workflowmanager.common.enums.RiskTag;
+import com.aidev.workflowmanager.stage.vo.WorkflowStageResponse;
 import com.aidev.workflowmanager.task.entity.WorkflowTask;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class TaskDetailResponse extends TaskResponse {
 
     private Long matchedTemplateId;
+    private String matchedTemplateName;
     private Long deliveryRecordId;
     private Boolean testChecklistGenerated;
+    private List<WorkflowStageResponse> stages = new ArrayList<WorkflowStageResponse>();
 
     public static TaskDetailResponse from(WorkflowTask task) {
         TaskDetailResponse response = new TaskDetailResponse();
@@ -36,6 +40,14 @@ public class TaskDetailResponse extends TaskResponse {
         this.matchedTemplateId = matchedTemplateId;
     }
 
+    public String getMatchedTemplateName() {
+        return matchedTemplateName;
+    }
+
+    public void setMatchedTemplateName(String matchedTemplateName) {
+        this.matchedTemplateName = matchedTemplateName;
+    }
+
     public Long getDeliveryRecordId() {
         return deliveryRecordId;
     }
@@ -50,5 +62,13 @@ public class TaskDetailResponse extends TaskResponse {
 
     public void setTestChecklistGenerated(Boolean testChecklistGenerated) {
         this.testChecklistGenerated = testChecklistGenerated;
+    }
+
+    public List<WorkflowStageResponse> getStages() {
+        return stages;
+    }
+
+    public void setStages(List<WorkflowStageResponse> stages) {
+        this.stages = stages;
     }
 }

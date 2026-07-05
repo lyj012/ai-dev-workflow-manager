@@ -5,6 +5,9 @@ import com.aidev.workflowmanager.common.enums.TaskStatus;
 import com.aidev.workflowmanager.common.exception.BusinessException;
 import com.aidev.workflowmanager.common.exception.ErrorCode;
 import com.aidev.workflowmanager.common.page.PageResult;
+import com.aidev.workflowmanager.stage.entity.WorkflowStage;
+import com.aidev.workflowmanager.stage.mapper.WorkflowStageMapper;
+import com.aidev.workflowmanager.stage.vo.WorkflowStageResponse;
 import com.aidev.workflowmanager.task.dto.CreateTaskRequest;
 import com.aidev.workflowmanager.task.dto.TaskPageQuery;
 import com.aidev.workflowmanager.task.entity.WorkflowTask;
@@ -12,6 +15,8 @@ import com.aidev.workflowmanager.task.mapper.WorkflowTaskMapper;
 import com.aidev.workflowmanager.task.service.WorkflowTaskService;
 import com.aidev.workflowmanager.task.vo.TaskDetailResponse;
 import com.aidev.workflowmanager.task.vo.TaskResponse;
+import com.aidev.workflowmanager.template.entity.WorkflowTemplate;
+import com.aidev.workflowmanager.template.mapper.WorkflowTemplateMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
@@ -25,9 +30,15 @@ import java.util.stream.Collectors;
 public class WorkflowTaskServiceImpl implements WorkflowTaskService {
 
     private final WorkflowTaskMapper workflowTaskMapper;
+    private final WorkflowTemplateMapper workflowTemplateMapper;
+    private final WorkflowStageMapper workflowStageMapper;
 
-    public WorkflowTaskServiceImpl(WorkflowTaskMapper workflowTaskMapper) {
+    public WorkflowTaskServiceImpl(WorkflowTaskMapper workflowTaskMapper,
+                                   WorkflowTemplateMapper workflowTemplateMapper,
+                                   WorkflowStageMapper workflowStageMapper) {
         this.workflowTaskMapper = workflowTaskMapper;
+        this.workflowTemplateMapper = workflowTemplateMapper;
+        this.workflowStageMapper = workflowStageMapper;
     }
 
     @Override
@@ -71,7 +82,19 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
         if (task == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
         }
-        return TaskDetailResponse.from(task);
+        TaskDetailResponse response = TaskDetailResponse.from(task);
+        if (task.getMatchedTemplateId() != null) {
+            WorkflowTemplate template = workflowTemplateMapper.selectOne(new LambdaQueryWrapper<WorkflowTemplate>()
+                    .eq(WorkflowTemplate::getId, task.getMatchedTemplateId()));
+            if (template != null) {
+                response.setMatchedTemplateName(template.getName());
+            }
+        }
+        List<WorkflowStage> stages = workflowStageMapper.selectList(new LambdaQueryWrapper<WorkflowStage>()
+                .eq(WorkflowStage::getTaskId, taskId)
+                .orderByAsc(WorkflowStage::getStageOrder));
+        response.setStages(stages.stream().map(WorkflowStageResponse::from).collect(Collectors.toList()));
+        return response;
     }
 
     private LambdaQueryWrapper<WorkflowTask> buildQueryWrapper(TaskPageQuery query) {

@@ -4,10 +4,12 @@ import com.aidev.workflowmanager.common.enums.StageStatus;
 import com.aidev.workflowmanager.common.enums.TaskStatus;
 import com.aidev.workflowmanager.common.exception.BusinessException;
 import com.aidev.workflowmanager.common.exception.ErrorCode;
+import com.aidev.workflowmanager.stage.dto.StageOutputRequest;
 import com.aidev.workflowmanager.stage.entity.WorkflowStage;
 import com.aidev.workflowmanager.stage.mapper.WorkflowStageMapper;
 import com.aidev.workflowmanager.stage.service.WorkflowStageService;
 import com.aidev.workflowmanager.stage.vo.StageInitResponse;
+import com.aidev.workflowmanager.stage.vo.StageOutputParts;
 import com.aidev.workflowmanager.stage.vo.WorkflowStageResponse;
 import com.aidev.workflowmanager.task.entity.WorkflowTask;
 import com.aidev.workflowmanager.task.mapper.WorkflowTaskMapper;
@@ -19,7 +21,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -132,6 +136,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         stage.setStageName(templateStage.getStageName());
         stage.setStageOrder(templateStage.getStageOrder());
         stage.setStatus(StageStatus.PENDING);
+        stage.setInputSummary(templateStage.getDescription());
         stage.setStartedAt(null);
         stage.setCompletedAt(null);
         stage.setDeleted(0);
@@ -177,6 +182,163 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
                 .sorted((left, right) -> left.getStageOrder().compareTo(right.getStageOrder()))
                 .map(WorkflowStageResponse::from)
                 .collect(Collectors.toList()));
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public WorkflowStageResponse startStage(Long taskId, Long stageId) {
+        WorkflowTask task = loadMutableTask(taskId, "stage start");
+        WorkflowStage stage = loadTaskStage(task.getId(), stageId);
+        requireStatus(stage, StageStatus.PENDING, "Only PENDING stage can be started");
+        stage.setStatus(StageStatus.RUNNING);
+        stage.setStartedAt(LocalDateTime.now());
+        workflowStageMapper.updateById(stage);
+        return WorkflowStageResponse.from(stage);
+    }
+
+    @Override
+    @Transactional
+    public WorkflowStageResponse completeStage(Long taskId, Long stageId, StageOutputRequest request) {
+        WorkflowTask task = loadMutableTask(taskId, "stage complete");
+        WorkflowStage stage = loadTaskStage(task.getId(), stageId);
+        requireStatus(stage, StageStatus.RUNNING, "Only RUNNING stage can be completed");
+        if (request != null && hasAnyOutput(request)) {
+            stage.setOutputSummary(toOutputParts(request).format());
+        }
+        stage.setStatus(StageStatus.COMPLETED);
+        stage.setCompletedAt(LocalDateTime.now());
+        workflowStageMapper.updateById(stage);
+        return WorkflowStageResponse.from(stage);
+    }
+
+    @Override
+    @Transactional
+    public WorkflowStageResponse skipStage(Long taskId, Long stageId) {
+        WorkflowTask task = loadMutableTask(taskId, "stage skip");
+        WorkflowStage stage = loadTaskStage(task.getId(), stageId);
+        requireStatus(stage, StageStatus.PENDING, "Only PENDING stage can be skipped");
+        WorkflowTemplateStage templateStage = loadTemplateStage(stage);
+        if (templateStage != null && Boolean.TRUE.equals(templateStage.getRequired())) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "Required stage cannot be skipped: " + stage.getStageKey());
+        }
+        if (isHighRiskTask(task) && ("analysis".equals(stage.getStageKey()) || "risk_review".equals(stage.getStageKey()))) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "High-risk key stage cannot be skipped: " + stage.getStageKey());
+        }
+        stage.setStatus(StageStatus.SKIPPED);
+        stage.setCompletedAt(LocalDateTime.now());
+        workflowStageMapper.updateById(stage);
+        return WorkflowStageResponse.from(stage);
+    }
+
+    @Override
+    @Transactional
+    public WorkflowStageResponse failStage(Long taskId, Long stageId, StageOutputRequest request) {
+        WorkflowTask task = loadMutableTask(taskId, "stage fail");
+        WorkflowStage stage = loadTaskStage(task.getId(), stageId);
+        requireStatus(stage, StageStatus.RUNNING, "Only RUNNING stage can be marked as failed");
+        if (request != null && hasAnyOutput(request)) {
+            stage.setOutputSummary(toOutputParts(request).format());
+        }
+        stage.setStatus(StageStatus.FAILED);
+        stage.setCompletedAt(LocalDateTime.now());
+        workflowStageMapper.updateById(stage);
+        return WorkflowStageResponse.from(stage);
+    }
+
+    @Override
+    @Transactional
+    public StageOutputRequest saveOutput(Long taskId, Long stageId, StageOutputRequest request) {
+        WorkflowTask task = loadMutableTask(taskId, "stage output update");
+        WorkflowStage stage = loadTaskStage(task.getId(), stageId);
+        if (request == null || !hasAnyOutput(request)) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "Stage output must not be blank");
+        }
+        StageOutputParts outputParts = toOutputParts(request);
+        stage.setOutputSummary(outputParts.format());
+        workflowStageMapper.updateById(stage);
+        return toOutputRequest(outputParts);
+    }
+
+    @Override
+    public StageOutputRequest getOutput(Long taskId, Long stageId) {
+        WorkflowTask task = loadExistingTask(taskId);
+        WorkflowStage stage = loadTaskStage(task.getId(), stageId);
+        return toOutputRequest(StageOutputParts.parse(stage.getOutputSummary()));
+    }
+
+    private WorkflowTask loadMutableTask(Long taskId, String action) {
+        WorkflowTask task = loadExistingTask(taskId);
+        if (TaskStatus.ARCHIVED.equals(task.getStatus()) || TaskStatus.CANCELED.equals(task.getStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM,
+                    "Task status does not allow " + action + ": " + task.getStatus());
+        }
+        return task;
+    }
+
+    private WorkflowTask loadExistingTask(Long taskId) {
+        if (taskId == null || taskId < 1) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "taskId must be greater than or equal to 1");
+        }
+        WorkflowTask task = workflowTaskMapper.selectOne(new LambdaQueryWrapper<WorkflowTask>()
+                .eq(WorkflowTask::getId, taskId));
+        if (task == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
+        }
+        return task;
+    }
+
+    private WorkflowStage loadTaskStage(Long taskId, Long stageId) {
+        if (stageId == null || stageId < 1) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "stageId must be greater than or equal to 1");
+        }
+        WorkflowStage stage = workflowStageMapper.selectOne(new LambdaQueryWrapper<WorkflowStage>()
+                .eq(WorkflowStage::getId, stageId)
+                .eq(WorkflowStage::getTaskId, taskId));
+        if (stage == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Workflow stage not found: " + stageId);
+        }
+        return stage;
+    }
+
+    private WorkflowTemplateStage loadTemplateStage(WorkflowStage stage) {
+        if (stage.getTemplateStageId() == null) {
+            return null;
+        }
+        return workflowTemplateStageMapper.selectOne(new LambdaQueryWrapper<WorkflowTemplateStage>()
+                .eq(WorkflowTemplateStage::getId, stage.getTemplateStageId()));
+    }
+
+    private void requireStatus(WorkflowStage stage, StageStatus expectedStatus, String message) {
+        if (!expectedStatus.equals(stage.getStatus())) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, message + ", current status: " + stage.getStatus());
+        }
+    }
+
+    private boolean isHighRiskTask(WorkflowTask task) {
+        return com.aidev.workflowmanager.common.enums.Complexity.COMPLEX.equals(task.getComplexity())
+                || (task.getRiskTags() != null && !task.getRiskTags().isEmpty());
+    }
+
+    private boolean hasAnyOutput(StageOutputRequest request) {
+        return request != null
+                && (StringUtils.hasText(request.getOutputSummary())
+                || StringUtils.hasText(request.getRiskPoints())
+                || StringUtils.hasText(request.getNextActions())
+                || StringUtils.hasText(request.getUnverifiedScope()));
+    }
+
+    private StageOutputParts toOutputParts(StageOutputRequest request) {
+        return StageOutputParts.of(request.getOutputSummary(), request.getRiskPoints(),
+                request.getNextActions(), request.getUnverifiedScope());
+    }
+
+    private StageOutputRequest toOutputRequest(StageOutputParts parts) {
+        StageOutputRequest response = new StageOutputRequest();
+        response.setOutputSummary(parts.getOutputSummary());
+        response.setRiskPoints(parts.getRiskPoints());
+        response.setNextActions(parts.getNextActions());
+        response.setUnverifiedScope(parts.getUnverifiedScope());
         return response;
     }
 }

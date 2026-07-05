@@ -17,6 +17,10 @@ public class WorkflowStageResponse {
 
     private String stageName;
 
+    private String stageGoal;
+
+    private Boolean required;
+
     private Integer stageOrder;
 
     private StageStatus status;
@@ -25,6 +29,14 @@ public class WorkflowStageResponse {
 
     private LocalDateTime completedAt;
 
+    private String outputSummary;
+
+    private String riskPoints;
+
+    private String nextActions;
+
+    private String unverifiedScope;
+
     public static WorkflowStageResponse from(WorkflowStage stage) {
         WorkflowStageResponse response = new WorkflowStageResponse();
         response.setId(stage.getId());
@@ -32,10 +44,17 @@ public class WorkflowStageResponse {
         response.setTemplateStageId(stage.getTemplateStageId());
         response.setStageKey(stage.getStageKey());
         response.setStageName(stage.getStageName());
+        response.setStageGoal(stage.getInputSummary());
+        response.setRequired(true);
         response.setStageOrder(stage.getStageOrder());
         response.setStatus(stage.getStatus());
         response.setStartedAt(stage.getStartedAt());
         response.setCompletedAt(stage.getCompletedAt());
+        StageOutputParts outputParts = StageOutputParts.parse(stage.getOutputSummary());
+        response.setOutputSummary(outputParts.getOutputSummary());
+        response.setRiskPoints(outputParts.getRiskPoints());
+        response.setNextActions(outputParts.getNextActions());
+        response.setUnverifiedScope(outputParts.getUnverifiedScope());
         return response;
     }
 
@@ -79,6 +98,22 @@ public class WorkflowStageResponse {
         this.stageName = stageName;
     }
 
+    public String getStageGoal() {
+        return stageGoal;
+    }
+
+    public void setStageGoal(String stageGoal) {
+        this.stageGoal = stageGoal;
+    }
+
+    public Boolean getRequired() {
+        return required;
+    }
+
+    public void setRequired(Boolean required) {
+        this.required = required;
+    }
+
     public Integer getStageOrder() {
         return stageOrder;
     }
@@ -109,5 +144,37 @@ public class WorkflowStageResponse {
 
     public void setCompletedAt(LocalDateTime completedAt) {
         this.completedAt = completedAt;
+    }
+
+    public String getOutputSummary() {
+        return outputSummary;
+    }
+
+    public void setOutputSummary(String outputSummary) {
+        this.outputSummary = outputSummary;
+    }
+
+    public String getRiskPoints() {
+        return riskPoints;
+    }
+
+    public void setRiskPoints(String riskPoints) {
+        this.riskPoints = riskPoints;
+    }
+
+    public String getNextActions() {
+        return nextActions;
+    }
+
+    public void setNextActions(String nextActions) {
+        this.nextActions = nextActions;
+    }
+
+    public String getUnverifiedScope() {
+        return unverifiedScope;
+    }
+
+    public void setUnverifiedScope(String unverifiedScope) {
+        this.unverifiedScope = unverifiedScope;
     }
 }
