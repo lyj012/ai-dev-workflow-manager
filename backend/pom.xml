@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.18</version>
+        <version>3.3.13</version>
         <relativePath/>
     </parent>
 
@@ -18,10 +18,10 @@
     <description>AI development workflow manager backend MVP</description>
 
     <properties>
-        <java.version>1.8</java.version>
-        <mybatis-plus.version>3.5.5</mybatis-plus.version>
-        <knife4j.version>3.0.3</knife4j.version>
-        <mysql.version>8.0.33</mysql.version>
+        <java.version>17</java.version>
+        <mybatis-plus.version>3.5.12</mybatis-plus.version>
+        <springdoc-openapi.version>2.6.0</springdoc-openapi.version>
+        <mysql.version>8.4.0</mysql.version>
     </properties>
 
     <dependencies>
@@ -35,7 +35,12 @@
         </dependency>
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <version>${mybatis-plus.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
             <version>${mybatis-plus.version}</version>
         </dependency>
         <dependency>
@@ -45,9 +50,9 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.github.xiaoymin</groupId>
-            <artifactId>knife4j-spring-boot-starter</artifactId>
-            <version>${knife4j.version}</version>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc-openapi.version}</version>
         </dependency>
 
         <dependency>
