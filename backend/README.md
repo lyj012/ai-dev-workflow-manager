@@ -1,41 +1,41 @@
 # 后端说明
 
-## 技术栈规划
+## 当前状态
 
-第一版后端计划使用：
+当前后端已创建 Spring Boot MVP 骨架，并已实现主链路基础模块：
+
+- `task`：任务创建、分页查询、详情查询。
+- `template`：内置 workflow 模板初始化、模板列表和详情查询。
+- `matching`：根据任务类型、复杂度和风险标签匹配 workflow 模板。
+- `stage`：任务阶段初始化、阶段状态推进、阶段输出回填。
+- `prompt`：阶段 Prompt 生成。
+- `delivery`：测试清单、交付总结、Markdown 导出和交付预览。
+
+## 技术栈
 
 - Spring Boot
 - MyBatis-Plus
 - MySQL
 - Knife4j
 
-当前阶段已创建 Spring Boot 后端 MVP Phase 1，先实现任务创建、分页查询和详情查询。
+## 本地启动准备
 
-## 模块规划
+启动服务前需要准备 MySQL：
 
-- `task`：任务创建、查询、状态管理。
-- `template`：workflow 模板和阶段模板管理。
-- `matching`：根据任务类型、复杂度和风险标签匹配 workflow 模板。
-- `stage`：任务阶段初始化、推进和输出记录。
-- `prompt`：阶段指令、测试清单和交付总结生成。
-- `delivery`：交付记录和 Markdown 导出。
+1. 创建数据库 `ai_dev_workflow_manager`。
+2. 执行 `../sql/schema.sql`。
+3. 配置数据库环境变量：
 
-## 第一版接口方向
+```bash
+set DB_URL=jdbc:mysql://localhost:3306/ai_dev_workflow_manager?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+set DB_USERNAME=root
+set DB_PASSWORD=your_password
+```
 
-- 任务创建和查询。
-- 模板创建、查询和维护。
-- 模板匹配。
-- 阶段初始化和推进。
-- 阶段输出记录。
-- 指令生成。
-- 测试清单生成。
-- 交付总结生成。
-- Markdown 导出。
+后端默认端口为 `8081`，前端 Vite 代理会将 `/api` 转发到 `http://localhost:8081`。
 
 ## 本地验证
 
 ```bash
 mvn test
 ```
-
-启动服务前需先创建 MySQL 数据库并执行 `../sql/schema.sql`，再按环境调整 `src/main/resources/application.yml` 中的数据源配置。
