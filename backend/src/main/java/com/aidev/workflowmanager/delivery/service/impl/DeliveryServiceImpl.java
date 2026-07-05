@@ -24,6 +24,8 @@ import com.aidev.workflowmanager.template.entity.WorkflowTemplateStage;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateMapper;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateStageMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -35,6 +37,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class DeliveryServiceImpl implements DeliveryService {
+
+    private static final Logger log = LoggerFactory.getLogger(DeliveryServiceImpl.class);
 
     private final WorkflowTaskMapper workflowTaskMapper;
     private final WorkflowTemplateMapper workflowTemplateMapper;
@@ -67,6 +71,8 @@ public class DeliveryServiceImpl implements DeliveryService {
         task.setTestChecklistGenerated(true);
         task.setDeliveryRecordId(record.getId());
         workflowTaskMapper.updateById(task);
+        log.info("[DELIVERY] test checklist generated taskId={} deliveryRecordId={} checklistLength={} highRisk={}",
+                taskId, record.getId(), length(record.getTestChecklist()), isHighRiskTask(task));
         return DeliveryRecordResponse.from(record, buildUnverifiedScope(loadStages(task.getId())));
     }
 
@@ -96,6 +102,8 @@ public class DeliveryServiceImpl implements DeliveryService {
         task.setStatus(TaskStatus.DELIVERED);
         task.setDeliveryRecordId(record.getId());
         workflowTaskMapper.updateById(task);
+        log.info("[DELIVERY] summary generated taskId={} deliveryRecordId={} summaryLength={} markdownLength={}",
+                taskId, record.getId(), length(record.getSummary()), length(record.getMarkdownContent()));
         return DeliveryRecordResponse.from(record, unverifiedScope);
     }
 
@@ -106,8 +114,13 @@ public class DeliveryServiceImpl implements DeliveryService {
         List<WorkflowStage> stages = loadStages(task.getId());
         String unverifiedScope = buildUnverifiedScope(stages);
         if (!StringUtils.hasText(record.getMarkdownContent())) {
-            return buildMarkdown(task, record, stages, unverifiedScope);
+            String markdown = buildMarkdown(task, record, stages, unverifiedScope);
+            log.info("[DELIVERY] markdown exported taskId={} generatedFromRecord=false markdownLength={}",
+                    taskId, length(markdown));
+            return markdown;
         }
+        log.info("[DELIVERY] markdown exported taskId={} generatedFromRecord=true markdownLength={}",
+                taskId, length(record.getMarkdownContent()));
         return record.getMarkdownContent();
     }
 
@@ -128,6 +141,8 @@ public class DeliveryServiceImpl implements DeliveryService {
         response.setStages(toStageResponses(stages));
         response.setRecord(DeliveryRecordResponse.from(record, buildUnverifiedScope(stages)));
         response.setMarkdown(markdown);
+        log.info("[DELIVERY] preview loaded taskId={} stageCount={} hasRecord={} markdownLength={}",
+                taskId, stages.size(), record != null, length(markdown));
         return response;
     }
 
@@ -361,5 +376,9 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     private String nullToDash(String value) {
         return StringUtils.hasText(value) ? value : "-";
+    }
+
+    private int length(String value) {
+        return value == null ? 0 : value.length();
     }
 }

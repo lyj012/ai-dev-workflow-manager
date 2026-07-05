@@ -10,7 +10,11 @@ import com.aidev.workflowmanager.template.entity.WorkflowTemplateStage;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateMapper;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateStageMapper;
 import com.aidev.workflowmanager.template.service.WorkflowTemplateService;
+import com.aidev.workflowmanager.template.vo.WorkflowTemplateResponse;
+import com.aidev.workflowmanager.template.vo.WorkflowTemplateStageResponse;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +22,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
+
+    private static final Logger log = LoggerFactory.getLogger(WorkflowTemplateServiceImpl.class);
 
     private final WorkflowTemplateMapper workflowTemplateMapper;
     private final WorkflowTemplateStageMapper workflowTemplateStageMapper;
@@ -80,6 +87,45 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
                         stage("testing", "测试验证", "执行覆盖高风险路径的测试和必要人工复核。", true),
                         stage("delivery", "交付总结", "汇总变更、验证结果、风险说明和未验证范围。", true)
                 )));
+    }
+
+    @Override
+    public List<WorkflowTemplateResponse> listEnabledTemplates() {
+        List<WorkflowTemplate> templates = workflowTemplateMapper.selectList(new LambdaQueryWrapper<WorkflowTemplate>()
+                .eq(WorkflowTemplate::getEnabled, true)
+                .orderByDesc(WorkflowTemplate::getPriority)
+                .orderByDesc(WorkflowTemplate::getVersion)
+                .orderByAsc(WorkflowTemplate::getId));
+        List<WorkflowTemplateResponse> responses = templates.stream()
+                .map(template -> WorkflowTemplateResponse.from(template, loadStageResponses(template.getId())))
+                .collect(Collectors.toList());
+        log.info("[TEMPLATE] list loaded enabledOnly=true templateCount={}", responses.size());
+        return responses;
+    }
+
+    @Override
+    public WorkflowTemplateResponse detail(Long templateId) {
+        if (templateId == null || templateId < 1) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "templateId must be greater than or equal to 1");
+        }
+        WorkflowTemplate template = workflowTemplateMapper.selectOne(new LambdaQueryWrapper<WorkflowTemplate>()
+                .eq(WorkflowTemplate::getId, templateId));
+        if (template == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Workflow template not found: " + templateId);
+        }
+        List<WorkflowTemplateStageResponse> stages = loadStageResponses(template.getId());
+        log.info("[TEMPLATE] detail loaded templateId={} templateName={} enabled={} stageCount={}",
+                template.getId(), template.getName(), template.getEnabled(), stages.size());
+        return WorkflowTemplateResponse.from(template, stages);
+    }
+
+    private List<WorkflowTemplateStageResponse> loadStageResponses(Long templateId) {
+        List<WorkflowTemplateStage> stages = workflowTemplateStageMapper.selectList(new LambdaQueryWrapper<WorkflowTemplateStage>()
+                .eq(WorkflowTemplateStage::getTemplateId, templateId)
+                .orderByAsc(WorkflowTemplateStage::getStageOrder));
+        return stages.stream()
+                .map(WorkflowTemplateStageResponse::from)
+                .collect(Collectors.toList());
     }
 
     private void ensureTemplate(BuiltInTemplate builtInTemplate) {

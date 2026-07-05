@@ -16,6 +16,8 @@ import com.aidev.workflowmanager.template.entity.WorkflowTemplateStage;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateMapper;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateStageMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class PromptServiceImpl implements PromptService {
+
+    private static final Logger log = LoggerFactory.getLogger(PromptServiceImpl.class);
 
     private final WorkflowTaskMapper workflowTaskMapper;
     private final WorkflowTemplateMapper workflowTemplateMapper;
@@ -65,6 +69,9 @@ public class PromptServiceImpl implements PromptService {
         response.setPromptContent(buildPrompt(variables, isHighRiskTask(task)));
         response.setPromptTemplateId(templateStage == null ? null : templateStage.getDefaultPromptTemplateId());
         response.setVariables(variables);
+        log.info("[PROMPT] generated taskId={} stageId={} stageKey={} workflowName={} highRisk={} promptLength={}",
+                taskId, stageId, stage.getStageKey(), variables.get("workflowName"), isHighRiskTask(task),
+                response.getPromptContent() == null ? 0 : response.getPromptContent().length());
         return response;
     }
 

@@ -13,6 +13,8 @@ import com.aidev.workflowmanager.task.mapper.WorkflowTaskMapper;
 import com.aidev.workflowmanager.template.entity.WorkflowTemplate;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class WorkflowTemplateMatchingServiceImpl implements WorkflowTemplateMatchingService {
+
+    private static final Logger log = LoggerFactory.getLogger(WorkflowTemplateMatchingServiceImpl.class);
 
     private final WorkflowTaskMapper workflowTaskMapper;
     private final WorkflowTemplateMapper workflowTemplateMapper;
@@ -56,6 +60,8 @@ public class WorkflowTemplateMatchingServiceImpl implements WorkflowTemplateMatc
         List<WorkflowTemplate> templates = workflowTemplateMapper.selectList(new LambdaQueryWrapper<WorkflowTemplate>()
                 .eq(WorkflowTemplate::getEnabled, true));
         List<ScoredTemplate> scoredTemplates = scoreTemplates(task, templates);
+        log.info("[MATCHING] candidates scored taskId={} taskType={} complexity={} riskTags={} candidateCount={}",
+                taskId, task.getTaskType(), task.getComplexity(), task.getRiskTags(), scoredTemplates.size());
         if (scoredTemplates.isEmpty()) {
             throw new BusinessException(ErrorCode.NOT_FOUND,
                     "No enabled workflow template can match task: " + taskId);
@@ -67,8 +73,11 @@ public class WorkflowTemplateMatchingServiceImpl implements WorkflowTemplateMatc
         if (topTies.size() == 1) {
             task.setMatchedTemplateId(best.template.getId());
             workflowTaskMapper.updateById(task);
+            log.info("[MATCHING] auto bound taskId={} templateId={} templateName={} score={}",
+                    taskId, best.template.getId(), best.template.getName(), best.score);
             return buildAutoBoundResponse(taskId, best, scoredTemplates);
         }
+        log.info("[MATCHING] ambiguous taskId={} topScore={} tieCount={}", taskId, best.score, topTies.size());
         return buildAmbiguousResponse(taskId, best, topTies);
     }
 

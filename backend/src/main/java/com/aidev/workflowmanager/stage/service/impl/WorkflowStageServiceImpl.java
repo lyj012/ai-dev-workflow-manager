@@ -19,6 +19,8 @@ import com.aidev.workflowmanager.template.mapper.WorkflowTemplateMapper;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateStageMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.dao.DuplicateKeyException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class WorkflowStageServiceImpl implements WorkflowStageService {
+
+    private static final Logger log = LoggerFactory.getLogger(WorkflowStageServiceImpl.class);
 
     private final Map<Long, Object> taskInitLocks = new ConcurrentHashMap<Long, Object>();
 
@@ -69,6 +73,8 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         }
 
         Long templateId = task.getMatchedTemplateId();
+        log.info("[STAGE] init requested taskId={} matchedTemplateId={} taskStatus={}",
+                taskId, templateId, task.getStatus());
         WorkflowTemplate template = workflowTemplateMapper.selectOne(new LambdaQueryWrapper<WorkflowTemplate>()
                 .eq(WorkflowTemplate::getId, templateId)
                 .eq(WorkflowTemplate::getEnabled, true));
@@ -93,6 +99,8 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         List<WorkflowStage> existingStages = selectTaskStages(taskId);
         validateStageKeys(taskId, templateId, existingStages, templateStages);
         if (hasAllTemplateStages(existingStages, templateStages)) {
+            log.info("[STAGE] init skipped existing taskId={} templateId={} stageCount={}",
+                    taskId, templateId, existingStages.size());
             return buildResponse(taskId, templateId, existingStages);
         }
 
@@ -107,6 +115,8 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
             List<WorkflowStage> stagesAfterConflict = selectTaskStages(taskId);
             validateStageKeys(taskId, templateId, stagesAfterConflict, templateStages);
             if (hasAllTemplateStages(stagesAfterConflict, templateStages)) {
+                log.info("[STAGE] init completed after duplicate conflict taskId={} templateId={} stageCount={}",
+                        taskId, templateId, stagesAfterConflict.size());
                 return buildResponse(taskId, templateId, stagesAfterConflict);
             }
             throw new BusinessException(ErrorCode.INVALID_PARAM,
@@ -119,6 +129,8 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
             throw new BusinessException(ErrorCode.INVALID_PARAM,
                     "Workflow stages initialization incomplete for task " + taskId);
         }
+        log.info("[STAGE] init completed taskId={} templateId={} stageCount={}",
+                taskId, templateId, initializedStages.size());
         return buildResponse(taskId, templateId, initializedStages);
     }
 
@@ -194,6 +206,8 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         stage.setStatus(StageStatus.RUNNING);
         stage.setStartedAt(LocalDateTime.now());
         workflowStageMapper.updateById(stage);
+        log.info("[STAGE] started taskId={} stageId={} stageKey={} status={}",
+                taskId, stageId, stage.getStageKey(), stage.getStatus());
         return WorkflowStageResponse.from(stage);
     }
 
@@ -209,6 +223,8 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         stage.setStatus(StageStatus.COMPLETED);
         stage.setCompletedAt(LocalDateTime.now());
         workflowStageMapper.updateById(stage);
+        log.info("[STAGE] completed taskId={} stageId={} stageKey={} hasOutput={}",
+                taskId, stageId, stage.getStageKey(), StringUtils.hasText(stage.getOutputSummary()));
         return WorkflowStageResponse.from(stage);
     }
 
@@ -228,6 +244,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         stage.setStatus(StageStatus.SKIPPED);
         stage.setCompletedAt(LocalDateTime.now());
         workflowStageMapper.updateById(stage);
+        log.info("[STAGE] skipped taskId={} stageId={} stageKey={}", taskId, stageId, stage.getStageKey());
         return WorkflowStageResponse.from(stage);
     }
 
@@ -243,6 +260,8 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         stage.setStatus(StageStatus.FAILED);
         stage.setCompletedAt(LocalDateTime.now());
         workflowStageMapper.updateById(stage);
+        log.info("[STAGE] failed taskId={} stageId={} stageKey={} hasOutput={}",
+                taskId, stageId, stage.getStageKey(), StringUtils.hasText(stage.getOutputSummary()));
         return WorkflowStageResponse.from(stage);
     }
 
@@ -257,6 +276,10 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         StageOutputParts outputParts = toOutputParts(request);
         stage.setOutputSummary(outputParts.format());
         workflowStageMapper.updateById(stage);
+        log.info("[STAGE] output saved taskId={} stageId={} stageKey={} outputLength={} riskLength={} nextLength={} unverifiedLength={}",
+                taskId, stageId, stage.getStageKey(), length(outputParts.getOutputSummary()),
+                length(outputParts.getRiskPoints()), length(outputParts.getNextActions()),
+                length(outputParts.getUnverifiedScope()));
         return toOutputRequest(outputParts);
     }
 
@@ -264,6 +287,8 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
     public StageOutputRequest getOutput(Long taskId, Long stageId) {
         WorkflowTask task = loadExistingTask(taskId);
         WorkflowStage stage = loadTaskStage(task.getId(), stageId);
+        log.info("[STAGE] output fetched taskId={} stageId={} stageKey={} hasOutput={}",
+                taskId, stageId, stage.getStageKey(), StringUtils.hasText(stage.getOutputSummary()));
         return toOutputRequest(StageOutputParts.parse(stage.getOutputSummary()));
     }
 
@@ -340,5 +365,9 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         response.setNextActions(parts.getNextActions());
         response.setUnverifiedScope(parts.getUnverifiedScope());
         return response;
+    }
+
+    private int length(String value) {
+        return value == null ? 0 : value.length();
     }
 }

@@ -19,6 +19,8 @@ import com.aidev.workflowmanager.template.entity.WorkflowTemplate;
 import com.aidev.workflowmanager.template.mapper.WorkflowTemplateMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -28,6 +30,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class WorkflowTaskServiceImpl implements WorkflowTaskService {
+
+    private static final Logger log = LoggerFactory.getLogger(WorkflowTaskServiceImpl.class);
 
     private final WorkflowTaskMapper workflowTaskMapper;
     private final WorkflowTemplateMapper workflowTemplateMapper;
@@ -56,6 +60,8 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
         task.setDeleted(0);
 
         workflowTaskMapper.insert(task);
+        log.info("[TASK] created taskId={} title={} taskType={} complexity={} riskTags={}",
+                task.getId(), task.getTitle(), task.getTaskType(), task.getComplexity(), task.getRiskTags());
         return TaskResponse.from(task);
     }
 
@@ -66,6 +72,8 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
 
         LambdaQueryWrapper<WorkflowTask> wrapper = buildQueryWrapper(query);
         Page<WorkflowTask> page = workflowTaskMapper.selectPage(new Page<WorkflowTask>(pageNo, pageSize), wrapper);
+        log.info("[TASK] page queried pageNo={} pageSize={} total={} status={} taskType={} complexity={} riskTags={}",
+                pageNo, pageSize, page.getTotal(), query.getStatus(), query.getTaskType(), query.getComplexity(), query.getRiskTags());
         List<TaskResponse> records = page.getRecords().stream()
                 .map(TaskResponse::from)
                 .collect(Collectors.toList());
@@ -82,6 +90,8 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
         if (task == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
         }
+        log.info("[TASK] detail requested taskId={} status={} matchedTemplateId={} deliveryRecordId={}",
+                task.getId(), task.getStatus(), task.getMatchedTemplateId(), task.getDeliveryRecordId());
         TaskDetailResponse response = TaskDetailResponse.from(task);
         if (task.getMatchedTemplateId() != null) {
             WorkflowTemplate template = workflowTemplateMapper.selectOne(new LambdaQueryWrapper<WorkflowTemplate>()
@@ -94,6 +104,8 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
                 .eq(WorkflowStage::getTaskId, taskId)
                 .orderByAsc(WorkflowStage::getStageOrder));
         response.setStages(stages.stream().map(WorkflowStageResponse::from).collect(Collectors.toList()));
+        log.info("[TASK] detail loaded taskId={} matchedTemplateName={} stageCount={}",
+                task.getId(), response.getMatchedTemplateName(), response.getStages().size());
         return response;
     }
 
