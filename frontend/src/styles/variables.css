@@ -1,9 +1,12 @@
 :root {
-  --app-bg: #f6f7f9;
+  --app-bg: #f4f8ff;
   --app-surface: #ffffff;
-  --app-border: #e5e7eb;
-  --app-border-soft: #edf0f3;
-  --app-text: #111827;
-  --app-muted: #6b7280;
-  --app-primary: #2f6fed;
+  --app-border: #dfe8f5;
+  --app-border-soft: #edf3fb;
+  --app-text: #0f1b35;
+  --app-muted: #70809b;
+  --app-primary: #2864e8;
+  --app-primary-soft: #eaf2ff;
+  --app-shadow: 0 16px 40px rgba(42, 68, 116, 0.12);
+  --app-shadow-soft: 0 10px 26px rgba(48, 76, 126, 0.08);
 }

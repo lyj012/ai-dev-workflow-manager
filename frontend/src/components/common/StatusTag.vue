@@ -1,9 +1,13 @@
 <template>
-  <el-tag :type="tagType" effect="plain">{{ label }}</el-tag>
+  <el-tag :type="tagType" effect="plain">
+    <el-icon class="status-icon"><component :is="icon" /></el-icon>
+    {{ label }}
+  </el-tag>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { CircleCheck, Document, VideoPlay, WarningFilled } from '@element-plus/icons-vue'
 import { labelOf, stageStatusOptions, taskStatusOptions } from '@/constants/options'
 
 const props = defineProps<{
@@ -22,4 +26,17 @@ const tagType = computed(() => {
   if (props.value === 'RUNNING' || props.value === 'TESTING' || props.value === 'EXECUTING') return 'warning'
   return 'info'
 })
+
+const icon = computed(() => {
+  if (props.value === 'COMPLETED' || props.value === 'DELIVERED') return CircleCheck
+  if (props.value === 'FAILED' || props.value === 'CANCELED') return WarningFilled
+  if (props.value === 'RUNNING' || props.value === 'TESTING' || props.value === 'EXECUTING') return VideoPlay
+  return Document
+})
 </script>
+
+<style scoped>
+.status-icon {
+  margin-right: 4px;
+}
+</style>
