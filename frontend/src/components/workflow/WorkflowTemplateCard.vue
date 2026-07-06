@@ -19,26 +19,37 @@ defineEmits<{ open: [id: number] }>()
 
 <style scoped>
 .template-card {
-  padding: 16px;
+  min-height: 172px;
+  padding: 18px;
   border: 1px solid var(--app-border);
   border-radius: 8px;
   background: var(--app-surface);
+  box-shadow: var(--app-shadow-soft);
   cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .template-card:hover {
-  border-color: var(--app-primary);
+  border-color: #c9ced8;
+  box-shadow: var(--app-shadow);
+  transform: translateY(-1px);
 }
 
 .template-card__title {
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 650;
   color: var(--app-text);
 }
 
 .template-card__desc {
-  min-height: 42px;
+  min-height: 48px;
   margin-top: 8px;
   color: var(--app-muted);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .template-card__meta {

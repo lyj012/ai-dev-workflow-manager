@@ -57,65 +57,65 @@ onMounted(async () => {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 22px;
-  margin-bottom: 34px;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .metric-card {
-  min-height: 194px;
-  padding: 28px 26px;
+  min-height: 154px;
+  padding: 20px;
   border: 1px solid var(--app-border);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--app-shadow);
+  border-radius: 8px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-soft);
 }
 
 .metric-icon {
   display: inline-flex;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  font-size: 24px;
+  border-radius: 8px;
+  font-size: 19px;
 }
 
 .metric-icon--blue {
-  background: #edf4ff;
-  color: #2864e8;
+  background: #eef2ff;
+  color: #4f46e5;
 }
 
 .metric-icon--green {
-  background: #e8f9ef;
-  color: #27b66d;
+  background: #e8f8ef;
+  color: var(--app-success);
 }
 
 .metric-icon--orange {
-  background: #fff4df;
-  color: #f2991b;
+  background: #fff7e8;
+  color: var(--app-warning);
 }
 
 .metric-icon--purple {
-  background: #f1eaff;
-  color: #7c52ff;
+  background: #f2efff;
+  color: var(--app-accent);
 }
 
 .metric-icon--red {
-  background: #ffecec;
-  color: #f04444;
+  background: #fff0f0;
+  color: var(--app-danger);
 }
 
 .metric-value {
-  margin-top: 20px;
-  font-size: 36px;
-  font-weight: 800;
+  margin-top: 16px;
+  font-size: 30px;
+  font-weight: 650;
   color: var(--app-text);
   line-height: 1;
 }
 
 .metric-label {
-  margin-top: 12px;
+  margin-top: 9px;
   color: var(--app-muted);
-  font-size: 16px;
+  font-size: 13px;
 }
 </style>

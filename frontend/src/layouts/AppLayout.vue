@@ -3,7 +3,7 @@
     <el-aside class="app-sidebar" width="290px">
       <div class="brand">
         <span class="brand-mark">A</span>
-        <div>
+        <div class="brand-copy">
           <div class="brand-title">开发工作流</div>
           <div class="brand-subtitle">交付复盘工具</div>
         </div>
