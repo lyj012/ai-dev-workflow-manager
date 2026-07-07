@@ -244,11 +244,11 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         WorkflowStage stage = loadTaskStage(task.getId(), stageId);
         requireStatus(stage, StageStatus.PENDING, "Only PENDING stage can be skipped");
         WorkflowTemplateStage templateStage = loadTemplateStage(stage);
-        if (templateStage != null && Boolean.TRUE.equals(templateStage.getRequired())) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "Required stage cannot be skipped: " + stage.getStageKey());
-        }
         if (isHighRiskTask(task) && ("analysis".equals(stage.getStageKey()) || "risk_review".equals(stage.getStageKey()))) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "High-risk key stage cannot be skipped: " + stage.getStageKey());
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "高风险任务不能跳过关键阶段：" + stageDisplayName(stage));
+        }
+        if (templateStage != null && Boolean.TRUE.equals(templateStage.getRequired())) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "必需阶段不能跳过：" + stageDisplayName(stage));
         }
         stage.setStatus(StageStatus.SKIPPED);
         stage.setCompletedAt(LocalDateTime.now());
@@ -378,5 +378,9 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
 
     private int length(String value) {
         return value == null ? 0 : value.length();
+    }
+
+    private String stageDisplayName(WorkflowStage stage) {
+        return StringUtils.hasText(stage.getStageName()) ? stage.getStageName() : stage.getStageKey();
     }
 }

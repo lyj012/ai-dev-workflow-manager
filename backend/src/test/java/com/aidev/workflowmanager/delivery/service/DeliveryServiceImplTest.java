@@ -90,7 +90,7 @@ class DeliveryServiceImplTest {
 
         assertThatThrownBy(() -> service.generateDeliverySummary(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Test checklist must be generated");
+                .hasMessageContaining("请先生成测试清单，再生成交付总结");
     }
 
     @Test
@@ -130,7 +130,23 @@ class DeliveryServiceImplTest {
 
         assertThatThrownBy(() -> service.generateDeliverySummary(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Required stage must be completed before delivery: analysis");
+                .hasMessageContaining("必需阶段未完成，不能交付：需求分析");
+    }
+
+    @Test
+    void generateDeliverySummaryRejectsFailedRequiredStageWithReadableMessage() {
+        WorkflowTask task = task(true);
+        task.setStatus(TaskStatus.TESTING);
+        task.setDeliveryRecordId(88L);
+        when(workflowTaskMapper.selectOne(any(Wrapper.class))).thenReturn(task);
+        when(workflowStageMapper.selectList(any(Wrapper.class))).thenReturn(Collections.singletonList(
+                stage(10L, "analysis", "需求分析", 101L, StageStatus.FAILED)
+        ));
+        when(workflowTemplateStageMapper.selectOne(any(Wrapper.class))).thenReturn(templateStage(true));
+
+        assertThatThrownBy(() -> service.generateDeliverySummary(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("必需阶段失败，不能交付：需求分析");
     }
 
     private WorkflowTask task(boolean checklistGenerated) {

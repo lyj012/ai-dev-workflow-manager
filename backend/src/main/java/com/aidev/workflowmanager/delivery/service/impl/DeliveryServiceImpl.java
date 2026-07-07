@@ -84,7 +84,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     public DeliveryRecordResponse generateDeliverySummary(Long taskId) {
         WorkflowTask task = loadMutableTask(taskId, "delivery summary generation");
         if (!Boolean.TRUE.equals(task.getTestChecklistGenerated())) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "Test checklist must be generated before delivery summary");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "请先生成测试清单，再生成交付总结。");
         }
         List<WorkflowStage> stages = loadStages(task.getId());
         assertDeliverableStages(task, stages);
@@ -229,17 +229,17 @@ public class DeliveryServiceImpl implements DeliveryService {
                         .eq(WorkflowTemplateStage::getId, stage.getTemplateStageId()));
             }
             boolean required = templateStage == null || Boolean.TRUE.equals(templateStage.getRequired());
-            if (required && !StageStatus.COMPLETED.equals(stage.getStatus())) {
-                throw new BusinessException(ErrorCode.INVALID_PARAM,
-                        "Required stage must be completed before delivery: " + stage.getStageKey());
-            }
             if (required && StageStatus.FAILED.equals(stage.getStatus())) {
                 throw new BusinessException(ErrorCode.INVALID_PARAM,
-                        "Failed required stage blocks delivery: " + stage.getStageKey());
+                        "必需阶段失败，不能交付：" + stageDisplayName(stage));
+            }
+            if (required && !StageStatus.COMPLETED.equals(stage.getStatus())) {
+                throw new BusinessException(ErrorCode.INVALID_PARAM,
+                        "必需阶段未完成，不能交付：" + stageDisplayName(stage));
             }
         }
         if (isHighRiskTask(task) && !Boolean.TRUE.equals(task.getTestChecklistGenerated())) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "High-risk task requires generated test checklist");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "高风险任务必须先生成测试清单。");
         }
     }
 
@@ -383,5 +383,9 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     private int length(String value) {
         return value == null ? 0 : value.length();
+    }
+
+    private String stageDisplayName(WorkflowStage stage) {
+        return StringUtils.hasText(stage.getStageName()) ? stage.getStageName() : stage.getStageKey();
     }
 }

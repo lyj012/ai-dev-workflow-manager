@@ -18,7 +18,9 @@ client.interceptors.response.use((response) => response, handleError)
 
 function unwrap<T>(body: ApiResponse<T>): T {
   if (typeof body?.code === 'number' && body.code !== 0) {
-    throw new Error(body.message || '请求失败')
+    const message = body.message || '请求失败'
+    ElMessage.error(message)
+    throw new Error(message)
   }
   return body.data
 }
