@@ -82,6 +82,9 @@ class WorkflowStageServiceImplTest {
         assertThat(response.getStages()).extracting("status").containsExactly(StageStatus.PENDING, StageStatus.PENDING);
         assertThat(stageCaptor.getAllValues()).allMatch(stage -> stage.getDeleted() == 0);
         assertThat(stageCaptor.getAllValues()).allMatch(stage -> stage.getStartedAt() == null && stage.getCompletedAt() == null);
+        ArgumentCaptor<WorkflowTask> taskCaptor = ArgumentCaptor.forClass(WorkflowTask.class);
+        verify(workflowTaskMapper).updateById(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getStatus()).isEqualTo(TaskStatus.EXECUTING);
     }
 
     @Test
@@ -100,6 +103,7 @@ class WorkflowStageServiceImplTest {
 
         assertThat(response.getStages()).extracting("stageKey").containsExactly("analysis", "implementation");
         verify(workflowStageMapper, never()).insert(any(WorkflowStage.class));
+        verify(workflowTaskMapper).updateById(any(WorkflowTask.class));
     }
 
     @Test

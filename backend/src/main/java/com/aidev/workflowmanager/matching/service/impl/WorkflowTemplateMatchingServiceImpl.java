@@ -72,6 +72,9 @@ public class WorkflowTemplateMatchingServiceImpl implements WorkflowTemplateMatc
         List<ScoredTemplate> topTies = findTopTies(scoredTemplates, best);
         if (topTies.size() == 1) {
             task.setMatchedTemplateId(best.template.getId());
+            if (TaskStatus.DRAFT.equals(task.getStatus())) {
+                task.setStatus(TaskStatus.ANALYZING);
+            }
             workflowTaskMapper.updateById(task);
             log.info("[MATCHING] auto bound taskId={} templateId={} templateName={} score={}",
                     taskId, best.template.getId(), best.template.getName(), best.score);

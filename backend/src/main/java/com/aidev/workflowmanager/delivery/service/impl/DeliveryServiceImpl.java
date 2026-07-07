@@ -70,6 +70,9 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         task.setTestChecklistGenerated(true);
         task.setDeliveryRecordId(record.getId());
+        if (!TaskStatus.DELIVERED.equals(task.getStatus())) {
+            task.setStatus(TaskStatus.TESTING);
+        }
         workflowTaskMapper.updateById(task);
         log.info("[DELIVERY] test checklist generated taskId={} deliveryRecordId={} checklistLength={} highRisk={}",
                 taskId, record.getId(), length(record.getTestChecklist()), isHighRiskTask(task));

@@ -84,7 +84,16 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
 
         Object lock = taskInitLocks.computeIfAbsent(taskId, key -> new Object());
         synchronized (lock) {
-            return initializeStagesWithLock(taskId, templateId);
+            StageInitResponse response = initializeStagesWithLock(taskId, templateId);
+            advanceTaskToExecuting(task);
+            return response;
+        }
+    }
+
+    private void advanceTaskToExecuting(WorkflowTask task) {
+        if (TaskStatus.DRAFT.equals(task.getStatus()) || TaskStatus.ANALYZING.equals(task.getStatus())) {
+            task.setStatus(TaskStatus.EXECUTING);
+            workflowTaskMapper.updateById(task);
         }
     }
 

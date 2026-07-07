@@ -66,7 +66,7 @@ class WorkflowTemplateMatchingServiceImplTest {
         ArgumentCaptor<WorkflowTask> taskCaptor = ArgumentCaptor.forClass(WorkflowTask.class);
         verify(workflowTaskMapper).updateById(taskCaptor.capture());
         assertThat(taskCaptor.getValue().getMatchedTemplateId()).isEqualTo(10L);
-        assertThat(taskCaptor.getValue().getStatus()).isEqualTo(TaskStatus.DRAFT);
+        assertThat(taskCaptor.getValue().getStatus()).isEqualTo(TaskStatus.ANALYZING);
     }
 
     @Test
@@ -87,7 +87,9 @@ class WorkflowTemplateMatchingServiceImplTest {
         assertThat(response.getAutoBound()).isTrue();
         assertThat(response.getMatchedTemplateId()).isEqualTo(20L);
         assertThat(response.getMatchScore()).isEqualTo(70);
-        verify(workflowTaskMapper).updateById(any(WorkflowTask.class));
+        ArgumentCaptor<WorkflowTask> taskCaptor = ArgumentCaptor.forClass(WorkflowTask.class);
+        verify(workflowTaskMapper).updateById(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getStatus()).isEqualTo(TaskStatus.ANALYZING);
     }
 
     @Test
