@@ -3,15 +3,18 @@ import type { Complexity, RiskTag, TaskType } from '@/types/task'
 export interface TemplateCandidate {
   templateId: number
   templateName: string
-  score: number
-  reason: string
+  matchScore: number
+  matchReasons: string[]
+  priority?: number
+  version?: number
 }
 
 export interface MatchTemplateResponse {
+  taskId?: number
   matchedTemplateId?: number
   matchedTemplateName?: string
-  score?: number
-  reason?: string
+  matchScore?: number
+  matchReasons: string[]
   autoBound: boolean
   candidates: TemplateCandidate[]
 }

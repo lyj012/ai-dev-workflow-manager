@@ -8,7 +8,7 @@
       </template>
     </AppPageHeader>
 
-    <el-alert class="gap-alert" type="info" :closable="false" show-icon title="当前默认使用 mock 数据展示完整页面骨架；后续将逐步替换为真实接口。" />
+    <el-alert v-if="USE_MOCK" class="gap-alert" type="info" :closable="false" show-icon title="当前使用 mock 数据展示页面骨架。" />
 
     <div class="section">
       <div class="section-header"><div class="section-title">任务基础信息</div></div>
@@ -133,6 +133,7 @@ import StageOutputEditor from '@/components/stage/StageOutputEditor.vue'
 import StageTable from '@/components/stage/StageTable.vue'
 import TaskBasicInfo from '@/components/task/TaskBasicInfo.vue'
 import WorkflowMatchPanel from '@/components/workflow/WorkflowMatchPanel.vue'
+import { USE_MOCK } from '@/constants/enums'
 import type { DeliveryRecord } from '@/types/delivery'
 import type { StageOutputPayload, WorkflowStage } from '@/types/stage'
 import type { MatchTemplateResponse } from '@/types/template'
@@ -180,6 +181,10 @@ async function handleMatch() {
   matchingLoading.value = true
   try {
     matchResult.value = await matchTemplate(id.value)
+    if (matchResult.value.autoBound && task.value) {
+      task.value.matchedTemplateId = matchResult.value.matchedTemplateId
+      task.value.matchedTemplateName = matchResult.value.matchedTemplateName
+    }
     ElMessage.success('Workflow 匹配完成')
   } finally {
     matchingLoading.value = false
@@ -204,7 +209,9 @@ function selectStage(stage: WorkflowStage) {
 
 async function runStageAction(stage: WorkflowStage, action: 'start' | 'complete' | 'skip' | 'fail') {
   const handlers = { start: startStage, complete: completeStage, skip: skipStage, fail: failStage }
-  await handlers[action](id.value, stage.id)
+  const updatedStage = await handlers[action](id.value, stage.id)
+  stages.value = stages.value.map((item) => (item.id === updatedStage.id ? updatedStage : item))
+  selectedStageId.value = updatedStage.id
   ElMessage.success('阶段状态已更新')
 }
 
@@ -239,7 +246,10 @@ async function saveOutput() {
   if (!selectedStageId.value) return
   outputSaving.value = true
   try {
-    await saveStageOutput(id.value, selectedStageId.value, { ...outputForm })
+    const savedOutput = await saveStageOutput(id.value, selectedStageId.value, { ...outputForm })
+    stages.value = stages.value.map((stage) =>
+      stage.id === selectedStageId.value ? { ...stage, ...savedOutput } : stage
+    )
     ElMessage.success('阶段输出已保存')
     outputDialogVisible.value = false
   } finally {
@@ -269,7 +279,6 @@ async function handleGenerateSummary() {
 
 onMounted(async () => {
   await loadDetail()
-  await handleGenerateChecklist()
 })
 </script>
 
