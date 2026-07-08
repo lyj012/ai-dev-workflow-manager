@@ -5,7 +5,7 @@
         <span class="brand-mark">A</span>
         <div>
           <div class="brand-title">开发工作流</div>
-          <div class="brand-subtitle">交付复盘工具</div>
+          <div class="brand-subtitle">AI 异步任务平台</div>
         </div>
       </div>
       <el-menu :default-active="activeMenu" router class="nav-menu">
@@ -16,6 +16,10 @@
         <el-menu-item index="/tasks">
           <el-icon><Document /></el-icon>
           <span>任务管理</span>
+        </el-menu-item>
+        <el-menu-item index="/ai-tasks">
+          <el-icon><Cpu /></el-icon>
+          <span>AI 任务</span>
         </el-menu-item>
         <el-menu-item index="/templates">
           <el-icon><Share /></el-icon>
@@ -47,11 +51,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowUpBold, Document, HomeFilled, Share } from '@element-plus/icons-vue'
+import { ArrowUpBold, Cpu, Document, HomeFilled, Share } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeMenu = computed(() => {
   if (route.path.startsWith('/dashboard')) return '/dashboard'
+  if (route.path.startsWith('/ai-tasks')) return '/ai-tasks'
   if (route.path.startsWith('/templates')) return '/templates'
   return '/tasks'
 })

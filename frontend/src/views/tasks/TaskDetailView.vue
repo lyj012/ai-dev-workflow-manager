@@ -161,6 +161,10 @@ const deliveryRecord = reactive<DeliveryRecord>({})
 const outputForm = reactive<StageOutputPayload>({ outputSummary: '', riskPoints: '', nextActions: '', unverifiedScope: '' })
 
 const selectedStage = computed(() => stages.value.find((stage) => stage.id === selectedStageId.value))
+const hasFailedStage = computed(() => stages.value.some((stage) => stage.status === 'FAILED'))
+const hasRequiredUnfinishedStage = computed(() =>
+  stages.value.some((stage) => stage.required !== false && stage.status !== 'COMPLETED')
+)
 
 async function loadDetail() {
   loading.value = true
@@ -170,7 +174,8 @@ async function loadDetail() {
     const detailStages = (detail as TaskDetail & { stages?: WorkflowStage[] }).stages
     if (Array.isArray(detailStages)) {
       stages.value = detailStages
-      selectedStageId.value = selectedStageId.value ?? stages.value[0]?.id
+      const selectedStageExists = stages.value.some((stage) => stage.id === selectedStageId.value)
+      selectedStageId.value = selectedStageExists ? selectedStageId.value : stages.value[0]?.id
     }
   } finally {
     loading.value = false
@@ -181,10 +186,7 @@ async function handleMatch() {
   matchingLoading.value = true
   try {
     matchResult.value = await matchTemplate(id.value)
-    if (matchResult.value.autoBound && task.value) {
-      task.value.matchedTemplateId = matchResult.value.matchedTemplateId
-      task.value.matchedTemplateName = matchResult.value.matchedTemplateName
-    }
+    await loadDetail()
     ElMessage.success('Workflow 匹配完成')
   } finally {
     matchingLoading.value = false
@@ -197,6 +199,7 @@ async function handleInitStages() {
     const result = await initializeStages(id.value)
     stages.value = result.stages
     selectedStageId.value = stages.value[0]?.id
+    await loadDetail()
     ElMessage.success('阶段初始化完成')
   } finally {
     stageInitLoading.value = false
@@ -261,6 +264,7 @@ async function handleGenerateChecklist() {
   deliveryLoading.value = true
   try {
     Object.assign(deliveryRecord, await generateTestChecklist(id.value))
+    await loadDetail()
     ElMessage.success('测试清单已生成')
   } finally {
     deliveryLoading.value = false
@@ -268,9 +272,22 @@ async function handleGenerateChecklist() {
 }
 
 async function handleGenerateSummary() {
+  if (!task.value?.testChecklistGenerated) {
+    ElMessage.warning('请先生成测试清单')
+    return
+  }
+  if (hasFailedStage.value) {
+    ElMessage.warning('存在失败阶段，不能交付')
+    return
+  }
+  if (hasRequiredUnfinishedStage.value) {
+    ElMessage.warning('还有必需阶段未完成')
+    return
+  }
   deliveryLoading.value = true
   try {
     Object.assign(deliveryRecord, await generateDeliverySummary(id.value))
+    await loadDetail()
     ElMessage.success('交付总结已生成')
   } finally {
     deliveryLoading.value = false

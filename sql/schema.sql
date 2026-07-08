@@ -96,3 +96,42 @@ CREATE TABLE delivery_record (
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
   INDEX idx_delivery_record_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='交付记录';
+
+CREATE TABLE ai_task (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+  title VARCHAR(200) NOT NULL COMMENT '任务标题',
+  requirement TEXT NOT NULL COMMENT '需求描述',
+  task_type VARCHAR(50) NULL COMMENT '任务类型',
+  remark VARCHAR(500) NULL COMMENT '备注',
+  status VARCHAR(30) NOT NULL DEFAULT 'CREATED' COMMENT '任务状态：CREATED/ANALYZING/SUCCESS/FAILED',
+  retry_count INT NOT NULL DEFAULT 0 COMMENT '重试次数',
+  error_message VARCHAR(1000) NULL COMMENT '失败原因',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  INDEX idx_ai_task_status (status),
+  INDEX idx_ai_task_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 异步任务';
+
+CREATE TABLE ai_task_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+  task_id BIGINT NOT NULL COMMENT 'AI 任务 ID',
+  log_level VARCHAR(20) NOT NULL COMMENT '日志级别：INFO/WARN/ERROR',
+  log_node VARCHAR(80) NOT NULL COMMENT '执行节点',
+  message VARCHAR(1000) NOT NULL COMMENT '日志内容',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  INDEX idx_ai_task_log_task (task_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 任务执行日志';
+
+CREATE TABLE ai_task_result (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+  task_id BIGINT NOT NULL COMMENT 'AI 任务 ID',
+  summary TEXT NULL COMMENT '需求摘要',
+  risk_points TEXT NULL COMMENT '风险点',
+  suggested_steps TEXT NULL COMMENT '建议执行步骤',
+  test_suggestions TEXT NULL COMMENT '建议验证方式',
+  raw_result MEDIUMTEXT NULL COMMENT '原始结果',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  UNIQUE KEY uk_ai_task_result_task (task_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 任务分析结果';

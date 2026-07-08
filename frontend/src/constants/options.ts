@@ -1,4 +1,6 @@
 export {
+  aiTaskStatusOptions,
+  aiTaskTypeOptions,
   complexityOptions,
   labelOf,
   riskTagOptions,

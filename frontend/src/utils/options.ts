@@ -1,5 +1,6 @@
 import type { Complexity, RiskTag, TaskStatus, TaskType } from '@/types/task'
 import type { StageStatus } from '@/types/stage'
+import type { AiTaskStatus, AiTaskType } from '@/types/ai-task'
 
 export const taskTypeOptions: Array<{ label: string; value: TaskType }> = [
   { label: '功能开发', value: 'feature' },
@@ -43,6 +44,19 @@ export const stageStatusOptions: Array<{ label: string; value: StageStatus }> = 
   { label: '已完成', value: 'COMPLETED' },
   { label: '已跳过', value: 'SKIPPED' },
   { label: '执行失败', value: 'FAILED' }
+]
+
+export const aiTaskStatusOptions: Array<{ label: string; value: AiTaskStatus }> = [
+  { label: '已创建', value: 'CREATED' },
+  { label: '分析中', value: 'ANALYZING' },
+  { label: '执行成功', value: 'SUCCESS' },
+  { label: '执行失败', value: 'FAILED' }
+]
+
+export const aiTaskTypeOptions: Array<{ label: string; value: AiTaskType }> = [
+  { label: '需求分析', value: 'requirement_analysis' },
+  { label: '开发计划', value: 'development_plan' },
+  { label: '风险评审', value: 'risk_review' }
 ]
 
 export function labelOf<T extends string>(options: Array<{ label: string; value: T }>, value?: T | null) {

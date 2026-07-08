@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import AppLayout from '@/layouts/AppLayout.vue'
+import AiTaskDetailView from '@/views/ai-tasks/AiTaskDetailView.vue'
+import AiTaskListView from '@/views/ai-tasks/AiTaskListView.vue'
 import DashboardView from '@/views/dashboard/DashboardView.vue'
 import DeliveryPreviewView from '@/views/delivery/DeliveryPreviewView.vue'
 import TaskCreateView from '@/views/tasks/TaskCreateView.vue'
@@ -16,8 +18,16 @@ const router = createRouter({
       path: '/',
       component: AppLayout,
       children: [
-        { path: '', redirect: '/tasks' },
+        { path: '', redirect: '/ai-tasks' },
         { path: 'dashboard', name: 'dashboard', component: DashboardView, meta: { title: '概览' } },
+        { path: 'ai-tasks', name: 'ai-tasks', component: AiTaskListView, meta: { title: 'AI 任务' } },
+        {
+          path: 'ai-tasks/:taskId',
+          name: 'ai-task-detail',
+          component: AiTaskDetailView,
+          props: true,
+          meta: { title: 'AI 任务详情' }
+        },
         { path: 'tasks', name: 'tasks', component: TaskListView, meta: { title: '任务管理' } },
         { path: 'tasks/create', name: 'task-create', component: TaskCreateView, meta: { title: '创建任务' } },
         { path: 'tasks/:taskId', name: 'task-detail', component: TaskDetailView, props: true, meta: { title: '任务详情' } },
