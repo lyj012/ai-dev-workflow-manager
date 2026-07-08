@@ -15,16 +15,16 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = false)
 public class CreateTaskRequest {
 
-    @NotBlank
-    @Size(max = 200)
+    @NotBlank(message = "任务标题不能为空")
+    @Size(max = 200, message = "任务标题长度不能超过 200 个字符")
     private String title;
 
     private String description;
 
-    @NotNull
+    @NotNull(message = "任务类型不能为空")
     private TaskType taskType;
 
-    @NotNull
+    @NotNull(message = "复杂度不能为空")
     private Complexity complexity;
 
     private List<RiskTag> riskTags = new ArrayList<RiskTag>();
@@ -71,6 +71,6 @@ public class CreateTaskRequest {
 
     @JsonProperty("status")
     public void rejectStatus(Object ignored) {
-        throw new IllegalArgumentException("status is not accepted; task status is forced to DRAFT");
+        throw new IllegalArgumentException("创建任务时不能传入状态，任务状态会自动设为草稿。");
     }
 }

@@ -44,17 +44,17 @@ public class WorkflowTemplateMatchingServiceImpl implements WorkflowTemplateMatc
     @Transactional
     public TemplateMatchResponse matchTemplate(Long taskId) {
         if (taskId == null || taskId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "taskId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务 ID 必须大于等于 1。");
         }
 
         WorkflowTask task = workflowTaskMapper.selectOne(new LambdaQueryWrapper<WorkflowTask>()
                 .eq(WorkflowTask::getId, taskId));
         if (task == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务不存在：" + taskId);
         }
         if (TaskStatus.ARCHIVED.equals(task.getStatus()) || TaskStatus.CANCELED.equals(task.getStatus())) {
             throw new BusinessException(ErrorCode.INVALID_PARAM,
-                    "Task status does not allow template matching: " + task.getStatus());
+                    "当前任务状态不允许匹配 workflow：" + task.getStatus());
         }
 
         List<WorkflowTemplate> templates = workflowTemplateMapper.selectList(new LambdaQueryWrapper<WorkflowTemplate>()
@@ -64,7 +64,7 @@ public class WorkflowTemplateMatchingServiceImpl implements WorkflowTemplateMatc
                 taskId, task.getTaskType(), task.getComplexity(), task.getRiskTags(), scoredTemplates.size());
         if (scoredTemplates.isEmpty()) {
             throw new BusinessException(ErrorCode.NOT_FOUND,
-                    "No enabled workflow template can match task: " + taskId);
+                    "没有可匹配的启用 workflow 模板，任务 ID：" + taskId);
         }
 
         Collections.sort(scoredTemplates, scoredTemplateComparator());
@@ -98,24 +98,24 @@ public class WorkflowTemplateMatchingServiceImpl implements WorkflowTemplateMatc
 
             if (task.getTaskType() != null && task.getTaskType().equals(template.getTaskType())) {
                 score += 40;
-                reasons.add("Task type matched: " + task.getTaskType().getCode());
+                reasons.add("任务类型匹配：" + task.getTaskType().getCode());
             }
             if (task.getComplexity() != null && task.getComplexity().equals(template.getComplexity())) {
                 score += 30;
-                reasons.add("Complexity matched: " + task.getComplexity().getCode());
+                reasons.add("复杂度匹配：" + task.getComplexity().getCode());
             }
 
             Set<RiskTag> templateRiskTags = toRiskTagSet(template.getRiskTags());
             for (RiskTag riskTag : taskRiskTags) {
                 if (templateRiskTags.contains(riskTag)) {
                     score += 30;
-                    reasons.add("High-risk tag matched: " + riskTag.getCode());
+                    reasons.add("风险标签匹配：" + riskTag.getCode());
                 }
             }
 
             if (highRiskTask && isHighRiskTemplate(template)) {
                 score += 100;
-                reasons.add("High-risk priority applied because task is high-risk and template is high-risk");
+                reasons.add("任务包含高风险因素，优先匹配高风险 workflow");
             }
 
             if (score > 0) {
@@ -195,7 +195,7 @@ public class WorkflowTemplateMatchingServiceImpl implements WorkflowTemplateMatc
         response.setMatchedTemplateName(null);
         response.setMatchScore(best.score);
         List<String> reasons = new ArrayList<String>(best.reasons);
-        reasons.add("Multiple candidates require user selection");
+        reasons.add("存在多个同分候选模板，需要人工选择");
         response.setMatchReasons(reasons);
         response.setAutoBound(false);
         response.setCandidates(toCandidateResponses(topTies));

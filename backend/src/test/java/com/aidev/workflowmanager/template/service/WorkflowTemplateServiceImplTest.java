@@ -122,7 +122,8 @@ class WorkflowTemplateServiceImplTest {
 
         assertThatThrownBy(() -> service.ensureBuiltInTemplates())
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("order 1: expected key analysis but found wrong_key");
+                .hasMessageContaining("内置 workflow 模板阶段配置冲突")
+                .hasMessageContaining("第 1 个阶段应为 analysis，实际为 wrong_key");
         verify(workflowTemplateMapper, never()).insert(any(WorkflowTemplate.class));
         verify(workflowTemplateStageMapper, never()).insert(any(WorkflowTemplateStage.class));
     }
@@ -152,9 +153,8 @@ class WorkflowTemplateServiceImplTest {
 
         assertThatThrownBy(() -> service.ensureBuiltInTemplates())
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("stage conflict")
-                .hasMessageContaining("key risk_review")
-                .hasMessageContaining("expected required true but found false");
+                .hasMessageContaining("内置 workflow 模板阶段必需配置冲突")
+                .hasMessageContaining("risk_review 应为 true，实际为 false");
         verify(workflowTemplateMapper, never()).insert(any(WorkflowTemplate.class));
         verify(workflowTemplateStageMapper, never()).insert(any(WorkflowTemplateStage.class));
     }

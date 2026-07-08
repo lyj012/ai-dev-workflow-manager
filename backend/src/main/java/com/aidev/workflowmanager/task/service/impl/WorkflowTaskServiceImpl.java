@@ -83,12 +83,12 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
     @Override
     public TaskDetailResponse detail(Long taskId) {
         if (taskId == null || taskId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "taskId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务 ID 必须大于等于 1。");
         }
         WorkflowTask task = workflowTaskMapper.selectOne(new LambdaQueryWrapper<WorkflowTask>()
                 .eq(WorkflowTask::getId, taskId));
         if (task == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务不存在：" + taskId);
         }
         log.info("[TASK] detail requested taskId={} status={} matchedTemplateId={} deliveryRecordId={}",
                 task.getId(), task.getStatus(), task.getMatchedTemplateId(), task.getDeliveryRecordId());
@@ -144,10 +144,10 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
 
     private void validateTitle(String title) {
         if (!StringUtils.hasText(title)) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "title must not be blank");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务标题不能为空。");
         }
         if (title.trim().length() > 200) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "title length must be less than or equal to 200");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务标题长度不能超过 200 个字符。");
         }
     }
 }

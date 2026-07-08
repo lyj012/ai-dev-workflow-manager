@@ -110,7 +110,7 @@ class WorkflowTemplateMatchingServiceImplTest {
         assertThat(response.getAutoBound()).isTrue();
         assertThat(response.getMatchedTemplateId()).isEqualTo(30L);
         assertThat(response.getMatchScore()).isEqualTo(260);
-        assertThat(response.getMatchReasons()).anyMatch(reason -> reason.contains("High-risk priority"));
+        assertThat(response.getMatchReasons()).anyMatch(reason -> reason.contains("优先匹配高风险 workflow"));
         verify(workflowTaskMapper).updateById(any(WorkflowTask.class));
     }
 
@@ -125,7 +125,7 @@ class WorkflowTemplateMatchingServiceImplTest {
 
         assertThatThrownBy(() -> service.matchTemplate(4L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("No enabled workflow template can match task: 4");
+                .hasMessageContaining("没有可匹配的启用 workflow 模板，任务 ID：4");
         verify(workflowTaskMapper, never()).updateById(any(WorkflowTask.class));
     }
 
@@ -139,10 +139,10 @@ class WorkflowTemplateMatchingServiceImplTest {
 
         assertThatThrownBy(() -> service.matchTemplate(5L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Task status does not allow template matching: ARCHIVED");
+                .hasMessageContaining("当前任务状态不允许匹配 workflow：ARCHIVED");
         assertThatThrownBy(() -> service.matchTemplate(6L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Task status does not allow template matching: CANCELED");
+                .hasMessageContaining("当前任务状态不允许匹配 workflow：CANCELED");
         verify(workflowTaskMapper, never()).updateById(any(WorkflowTask.class));
     }
 
@@ -150,15 +150,15 @@ class WorkflowTemplateMatchingServiceImplTest {
     void matchRejectsMissingTaskAndInvalidTaskId() {
         assertThatThrownBy(() -> service.matchTemplate(null))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("taskId must be greater than or equal to 1");
+                .hasMessageContaining("任务 ID 必须大于等于 1");
         assertThatThrownBy(() -> service.matchTemplate(0L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("taskId must be greater than or equal to 1");
+                .hasMessageContaining("任务 ID 必须大于等于 1");
 
         when(workflowTaskMapper.selectOne(any(Wrapper.class))).thenReturn(null);
         assertThatThrownBy(() -> service.matchTemplate(404L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Task not found: 404");
+                .hasMessageContaining("任务不存在：404");
     }
 
     @Test
@@ -180,7 +180,7 @@ class WorkflowTemplateMatchingServiceImplTest {
         assertThat(response.getMatchedTemplateId()).isNull();
         assertThat(response.getMatchedTemplateName()).isNull();
         assertThat(response.getCandidates()).extracting("templateId").containsExactly(20L, 21L);
-        assertThat(response.getMatchReasons()).contains("Multiple candidates require user selection");
+        assertThat(response.getMatchReasons()).contains("存在多个同分候选模板，需要人工选择");
         verify(workflowTaskMapper, never()).updateById(any(WorkflowTask.class));
     }
 

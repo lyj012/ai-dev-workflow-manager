@@ -85,7 +85,7 @@ class PromptServiceImplTest {
 
         assertThatThrownBy(() -> service.generatePrompt(1L, 404L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Workflow stage not found: 404");
+                .hasMessageContaining("任务阶段不存在：404");
     }
 
     private WorkflowTask task() {

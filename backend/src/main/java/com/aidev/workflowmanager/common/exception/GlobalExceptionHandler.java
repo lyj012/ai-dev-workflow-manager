@@ -32,11 +32,20 @@ public class GlobalExceptionHandler {
             ConstraintViolationException.class,
             MethodArgumentTypeMismatchException.class,
             MissingServletRequestParameterException.class,
-            HttpMessageNotReadableException.class,
             IllegalArgumentException.class
     })
     public ApiResponse<Void> handleBadRequest(Exception ex) {
         return ApiResponse.fail(ErrorCode.INVALID_PARAM, ex.getMessage());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ApiResponse<Void> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        Throwable cause = ex.getMostSpecificCause();
+        String message = cause == null ? null : cause.getMessage();
+        if (message != null && message.contains("枚举值无效")) {
+            return ApiResponse.fail(ErrorCode.INVALID_PARAM, message);
+        }
+        return ApiResponse.fail(ErrorCode.INVALID_PARAM, "请求参数格式不正确，请检查输入内容。");
     }
 
     @ExceptionHandler(Exception.class)

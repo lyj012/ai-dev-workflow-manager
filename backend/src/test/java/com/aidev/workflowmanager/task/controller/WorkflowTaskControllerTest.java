@@ -92,12 +92,12 @@ class WorkflowTaskControllerTest {
     @Test
     void detailReturnsBusinessNotFound() throws Exception {
         when(service.detail(404L))
-                .thenThrow(new BusinessException(ErrorCode.NOT_FOUND, "Task not found"));
+                .thenThrow(new BusinessException(ErrorCode.NOT_FOUND, "任务不存在"));
 
         mockMvc.perform(get("/api/v1/tasks/404"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(404))
-                .andExpect(jsonPath("$.message").value("Task not found"));
+                .andExpect(jsonPath("$.message").value("任务不存在"));
     }
 
     @Test
@@ -107,7 +107,7 @@ class WorkflowTaskControllerTest {
                         .content("{\"title\":\"x\",\"taskType\":\"feature\",\"complexity\":\"HUGE\",\"riskTags\":[]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message", containsString("Invalid Complexity")));
+                .andExpect(jsonPath("$.message", containsString("枚举值无效：Complexity=HUGE")));
     }
 
     @Test
@@ -117,7 +117,7 @@ class WorkflowTaskControllerTest {
                         .content("{\"title\":\"x\",\"taskType\":\"feature\",\"complexity\":\"SIMPLE\",\"riskTags\":[\"unknown\"]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message", containsString("Invalid RiskTag")));
+                .andExpect(jsonPath("$.message", containsString("枚举值无效：RiskTag=unknown")));
     }
 
     @Test
@@ -136,14 +136,14 @@ class WorkflowTaskControllerTest {
                         .content("{\"title\":\"   \",\"taskType\":\"feature\",\"complexity\":\"SIMPLE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message", containsString("title")));
+                .andExpect(jsonPath("$.message", containsString("任务标题")));
 
         mockMvc.perform(post("/api/v1/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + repeat("a", 201) + "\",\"taskType\":\"feature\",\"complexity\":\"SIMPLE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message", containsString("title")));
+                .andExpect(jsonPath("$.message", containsString("任务标题")));
     }
 
     private String repeat(String value, int count) {

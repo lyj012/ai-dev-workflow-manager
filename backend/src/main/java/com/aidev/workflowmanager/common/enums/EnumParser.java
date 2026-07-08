@@ -14,6 +14,6 @@ public final class EnumParser {
                 return item;
             }
         }
-        throw new IllegalArgumentException("Invalid " + enumType.getSimpleName() + ": " + code);
+        throw new IllegalArgumentException("枚举值无效：" + enumType.getSimpleName() + "=" + code);
     }
 }

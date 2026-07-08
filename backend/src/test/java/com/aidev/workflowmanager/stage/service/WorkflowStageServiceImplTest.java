@@ -149,7 +149,7 @@ class WorkflowStageServiceImplTest {
 
         assertThatThrownBy(() -> service.initializeStages(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("stage order 2 expected key risk_review but found implementation");
+                .hasMessageContaining("任务阶段数据与模板配置冲突：第 2 个阶段应为 risk_review，实际为 implementation");
         verify(workflowStageMapper, never()).insert(any(WorkflowStage.class));
     }
 
@@ -179,7 +179,7 @@ class WorkflowStageServiceImplTest {
 
         assertThatThrownBy(() -> service.initializeStages(404L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Task not found: 404");
+                .hasMessageContaining("任务不存在：404");
     }
 
     @Test
@@ -188,7 +188,7 @@ class WorkflowStageServiceImplTest {
 
         assertThatThrownBy(() -> service.initializeStages(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Task has no matched template");
+                .hasMessageContaining("任务还没有匹配 workflow 模板");
     }
 
     @Test
@@ -198,7 +198,7 @@ class WorkflowStageServiceImplTest {
 
         assertThatThrownBy(() -> service.initializeStages(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Workflow template not found or disabled: 20");
+                .hasMessageContaining("workflow 模板不存在或已禁用：20");
     }
 
     @Test
@@ -209,7 +209,7 @@ class WorkflowStageServiceImplTest {
 
         assertThatThrownBy(() -> service.initializeStages(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Workflow template has no stages: 20");
+                .hasMessageContaining("workflow 模板没有配置阶段：20");
     }
 
     @Test
@@ -220,17 +220,17 @@ class WorkflowStageServiceImplTest {
 
         assertThatThrownBy(() -> service.initializeStages(1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Task status does not allow");
+                .hasMessageContaining("当前任务状态不允许初始化阶段");
         assertThatThrownBy(() -> service.initializeStages(2L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Task status does not allow");
+                .hasMessageContaining("当前任务状态不允许初始化阶段");
     }
 
     @Test
     void initializeStagesRejectsInvalidTaskId() {
         assertThatThrownBy(() -> service.initializeStages(0L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("taskId must be greater than or equal to 1");
+                .hasMessageContaining("任务 ID 必须大于等于 1");
     }
 
     private WorkflowTask task(TaskStatus status, Long matchedTemplateId) {

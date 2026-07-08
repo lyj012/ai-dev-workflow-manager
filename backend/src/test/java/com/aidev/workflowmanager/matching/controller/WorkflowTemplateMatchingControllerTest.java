@@ -41,7 +41,7 @@ class WorkflowTemplateMatchingControllerTest {
         response.setMatchedTemplateName("简单任务 workflow");
         response.setMatchScore(70);
         response.setAutoBound(true);
-        response.setMatchReasons(Collections.singletonList("Task type matched: docs"));
+        response.setMatchReasons(Collections.singletonList("任务类型匹配：docs"));
         response.setCandidates(Collections.singletonList(candidate(10L, "简单任务 workflow", 70, 10, 1)));
         when(service.matchTemplate(1L)).thenReturn(response);
 
@@ -63,7 +63,7 @@ class WorkflowTemplateMatchingControllerTest {
         response.setMatchedTemplateName(null);
         response.setMatchScore(70);
         response.setAutoBound(false);
-        response.setMatchReasons(Collections.singletonList("Multiple candidates require user selection"));
+        response.setMatchReasons(Collections.singletonList("存在多个同分候选模板，需要人工选择"));
         response.setCandidates(Arrays.asList(
                 candidate(20L, "standard-a", 70, 20, 1),
                 candidate(21L, "standard-b", 70, 20, 1)
@@ -83,12 +83,12 @@ class WorkflowTemplateMatchingControllerTest {
     void matchTemplateWrapsBusinessError() throws Exception {
         when(service.matchTemplate(9L))
                 .thenThrow(new BusinessException(ErrorCode.NOT_FOUND,
-                        "No enabled workflow template can match task: 9"));
+                        "没有可匹配的启用 workflow 模板，任务 ID：9"));
 
         mockMvc.perform(post("/api/v1/tasks/9/match-template"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(404))
-                .andExpect(jsonPath("$.message").value("No enabled workflow template can match task: 9"));
+                .andExpect(jsonPath("$.message").value("没有可匹配的启用 workflow 模板，任务 ID：9"));
     }
 
     private TemplateMatchCandidateResponse candidate(Long id, String name, Integer score, Integer priority,
@@ -99,7 +99,7 @@ class WorkflowTemplateMatchingControllerTest {
         candidate.setMatchScore(score);
         candidate.setPriority(priority);
         candidate.setVersion(version);
-        candidate.setMatchReasons(Collections.singletonList("matched"));
+        candidate.setMatchReasons(Collections.singletonList("已匹配"));
         return candidate;
     }
 }

@@ -77,25 +77,25 @@ public class PromptServiceImpl implements PromptService {
 
     private WorkflowTask loadTask(Long taskId) {
         if (taskId == null || taskId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "taskId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务 ID 必须大于等于 1。");
         }
         WorkflowTask task = workflowTaskMapper.selectOne(new LambdaQueryWrapper<WorkflowTask>()
                 .eq(WorkflowTask::getId, taskId));
         if (task == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务不存在：" + taskId);
         }
         return task;
     }
 
     private WorkflowStage loadStage(Long taskId, Long stageId) {
         if (stageId == null || stageId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "stageId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "阶段 ID 必须大于等于 1。");
         }
         WorkflowStage stage = workflowStageMapper.selectOne(new LambdaQueryWrapper<WorkflowStage>()
                 .eq(WorkflowStage::getId, stageId)
                 .eq(WorkflowStage::getTaskId, taskId));
         if (stage == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Workflow stage not found: " + stageId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务阶段不存在：" + stageId);
         }
         return stage;
     }

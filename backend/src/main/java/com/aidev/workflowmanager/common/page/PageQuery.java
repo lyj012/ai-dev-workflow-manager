@@ -17,7 +17,7 @@ public class PageQuery {
             return DEFAULT_PAGE_NO;
         }
         if (pageNo < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "pageNo must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "页码必须大于等于 1。");
         }
         return pageNo;
     }
@@ -27,7 +27,7 @@ public class PageQuery {
             return DEFAULT_PAGE_SIZE;
         }
         if (pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "pageSize must be between 1 and " + MAX_PAGE_SIZE);
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "每页数量必须在 1 到 " + MAX_PAGE_SIZE + " 之间。");
         }
         return pageSize;
     }

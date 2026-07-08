@@ -1,10 +1,10 @@
 package com.aidev.workflowmanager.common.exception;
 
 public enum ErrorCode {
-    SUCCESS(0, "success"),
-    INVALID_PARAM(400, "Invalid request parameter"),
-    NOT_FOUND(404, "Resource not found"),
-    INTERNAL_ERROR(500, "Internal server error");
+    SUCCESS(0, "成功"),
+    INVALID_PARAM(400, "请求参数无效"),
+    NOT_FOUND(404, "资源不存在"),
+    INTERNAL_ERROR(500, "系统内部错误");
 
     private final Integer code;
     private final String message;

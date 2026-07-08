@@ -92,7 +92,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         DeliveryRecord record = getOrCreateRecord(task);
         String unverifiedScope = buildUnverifiedScope(stages);
         if (isHighRiskTask(task) && !StringUtils.hasText(record.getRiskNotes())) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "High-risk delivery requires risk notes");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "高风险任务交付前必须包含风险说明。");
         }
         if (isHighRiskTask(task) && !StringUtils.hasText(unverifiedScope)) {
             unverifiedScope = "未回填明确未验证范围，请人工复核后再对外交付。";
@@ -153,19 +153,19 @@ public class DeliveryServiceImpl implements DeliveryService {
         WorkflowTask task = loadTask(taskId);
         if (TaskStatus.ARCHIVED.equals(task.getStatus()) || TaskStatus.CANCELED.equals(task.getStatus())) {
             throw new BusinessException(ErrorCode.INVALID_PARAM,
-                    "Task status does not allow " + action + ": " + task.getStatus());
+                    "当前任务状态不允许执行该交付操作：" + task.getStatus());
         }
         return task;
     }
 
     private WorkflowTask loadTask(Long taskId) {
         if (taskId == null || taskId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "taskId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务 ID 必须大于等于 1。");
         }
         WorkflowTask task = workflowTaskMapper.selectOne(new LambdaQueryWrapper<WorkflowTask>()
                 .eq(WorkflowTask::getId, taskId));
         if (task == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务不存在：" + taskId);
         }
         return task;
     }
@@ -187,7 +187,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private DeliveryRecord loadRecord(WorkflowTask task) {
         DeliveryRecord record = findRecord(task);
         if (record == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Delivery record not found for task: " + task.getId());
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务还没有交付记录：" + task.getId());
         }
         return record;
     }
@@ -220,7 +220,7 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     private void assertDeliverableStages(WorkflowTask task, List<WorkflowStage> stages) {
         if (stages == null || stages.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "Task stages must be initialized before delivery summary");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "请先初始化任务阶段，再生成交付总结。");
         }
         for (WorkflowStage stage : stages) {
             WorkflowTemplateStage templateStage = null;

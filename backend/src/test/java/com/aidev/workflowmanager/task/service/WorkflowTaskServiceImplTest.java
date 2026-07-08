@@ -139,7 +139,7 @@ class WorkflowTaskServiceImplTest {
 
         assertThatThrownBy(() -> service.detail(999L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Task not found");
+                .hasMessageContaining("任务不存在");
     }
 
     @Test
@@ -147,12 +147,12 @@ class WorkflowTaskServiceImplTest {
         CreateTaskRequest blank = validCreateRequest();
         blank.setTitle("   ");
         assertThatThrownBy(() -> service.create(blank)).isInstanceOf(BusinessException.class)
-                .hasMessageContaining("title must not be blank");
+                .hasMessageContaining("任务标题不能为空");
 
         CreateTaskRequest tooLong = validCreateRequest();
         tooLong.setTitle(repeat("a", 201));
         assertThatThrownBy(() -> service.create(tooLong)).isInstanceOf(BusinessException.class)
-                .hasMessageContaining("title length");
+                .hasMessageContaining("任务标题长度不能超过");
     }
 
     @Test
@@ -160,12 +160,12 @@ class WorkflowTaskServiceImplTest {
         TaskPageQuery zeroPage = new TaskPageQuery();
         zeroPage.setPageNo(0L);
         assertThatThrownBy(() -> service.page(zeroPage)).isInstanceOf(BusinessException.class)
-                .hasMessageContaining("pageNo");
+                .hasMessageContaining("页码必须大于等于 1");
 
         TaskPageQuery tooLarge = new TaskPageQuery();
         tooLarge.setPageSize(101L);
         assertThatThrownBy(() -> service.page(tooLarge)).isInstanceOf(BusinessException.class)
-                .hasMessageContaining("pageSize");
+                .hasMessageContaining("每页数量必须在 1 到 100 之间");
     }
 
     private CreateTaskRequest validCreateRequest() {

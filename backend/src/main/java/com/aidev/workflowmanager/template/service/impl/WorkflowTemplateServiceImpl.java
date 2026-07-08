@@ -106,12 +106,12 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
     @Override
     public WorkflowTemplateResponse detail(Long templateId) {
         if (templateId == null || templateId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "templateId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "模板 ID 必须大于等于 1。");
         }
         WorkflowTemplate template = workflowTemplateMapper.selectOne(new LambdaQueryWrapper<WorkflowTemplate>()
                 .eq(WorkflowTemplate::getId, templateId));
         if (template == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Workflow template not found: " + templateId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "workflow 模板不存在：" + templateId);
         }
         List<WorkflowTemplateStageResponse> stages = loadStageResponses(template.getId());
         log.info("[TEMPLATE] detail loaded templateId={} templateName={} enabled={} stageCount={}",
@@ -155,16 +155,16 @@ public class WorkflowTemplateServiceImpl implements WorkflowTemplateService {
             if (existingStage != null) {
                 if (!stageDefinition.stageKey.equals(existingStage.getStageKey())) {
                     throw new BusinessException(ErrorCode.INVALID_PARAM,
-                            "Built-in workflow template stage conflict for template " + template.getId()
-                                    + " order " + stageOrder + ": expected key " + stageDefinition.stageKey
-                                    + " but found " + existingStage.getStageKey());
+                            "内置 workflow 模板阶段配置冲突：模板 " + template.getId()
+                                    + " 第 " + stageOrder + " 个阶段应为 " + stageDefinition.stageKey
+                                    + "，实际为 " + existingStage.getStageKey());
                 }
                 if (!stageDefinition.required.equals(existingStage.getRequired())) {
                     throw new BusinessException(ErrorCode.INVALID_PARAM,
-                            "Built-in workflow template stage conflict for template " + template.getId()
-                                    + " order " + stageOrder + " key " + stageDefinition.stageKey
-                                    + ": expected required " + stageDefinition.required
-                                    + " but found " + existingStage.getRequired());
+                            "内置 workflow 模板阶段必需配置冲突：模板 " + template.getId()
+                                    + " 第 " + stageOrder + " 个阶段 " + stageDefinition.stageKey
+                                    + " 应为 " + stageDefinition.required
+                                    + "，实际为 " + existingStage.getRequired());
                 }
                 continue;
             }

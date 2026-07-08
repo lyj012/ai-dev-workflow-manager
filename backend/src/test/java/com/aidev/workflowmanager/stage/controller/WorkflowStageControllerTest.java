@@ -61,11 +61,11 @@ class WorkflowStageControllerTest {
     @Test
     void initializeStagesWrapsBusinessError() throws Exception {
         when(service.initializeStages(9L))
-                .thenThrow(new BusinessException(ErrorCode.INVALID_PARAM, "Task has no matched template"));
+                .thenThrow(new BusinessException(ErrorCode.INVALID_PARAM, "任务还没有匹配 workflow 模板。"));
 
         mockMvc.perform(post("/api/v1/tasks/9/stages/init"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message").value("Task has no matched template"));
+                .andExpect(jsonPath("$.message").value("任务还没有匹配 workflow 模板。"));
     }
 }

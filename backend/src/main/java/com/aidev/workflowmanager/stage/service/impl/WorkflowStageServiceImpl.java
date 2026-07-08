@@ -57,19 +57,19 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
     @Transactional
     public StageInitResponse initializeStages(Long taskId) {
         if (taskId == null || taskId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "taskId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务 ID 必须大于等于 1。");
         }
 
         WorkflowTask task = workflowTaskMapper.selectOne(new LambdaQueryWrapper<WorkflowTask>()
                 .eq(WorkflowTask::getId, taskId));
         if (task == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务不存在：" + taskId);
         }
         if (TaskStatus.ARCHIVED.equals(task.getStatus()) || TaskStatus.CANCELED.equals(task.getStatus())) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "Task status does not allow stage initialization: " + task.getStatus());
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "当前任务状态不允许初始化阶段：" + task.getStatus());
         }
         if (task.getMatchedTemplateId() == null) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "Task has no matched template");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务还没有匹配 workflow 模板。");
         }
 
         Long templateId = task.getMatchedTemplateId();
@@ -79,7 +79,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
                 .eq(WorkflowTemplate::getId, templateId)
                 .eq(WorkflowTemplate::getEnabled, true));
         if (template == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Workflow template not found or disabled: " + templateId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "workflow 模板不存在或已禁用：" + templateId);
         }
 
         Object lock = taskInitLocks.computeIfAbsent(taskId, key -> new Object());
@@ -102,7 +102,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
                 .eq(WorkflowTemplateStage::getTemplateId, templateId)
                 .orderByAsc(WorkflowTemplateStage::getStageOrder));
         if (templateStages == null || templateStages.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "Workflow template has no stages: " + templateId);
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "workflow 模板没有配置阶段：" + templateId);
         }
 
         List<WorkflowStage> existingStages = selectTaskStages(taskId);
@@ -129,14 +129,14 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
                 return buildResponse(taskId, templateId, stagesAfterConflict);
             }
             throw new BusinessException(ErrorCode.INVALID_PARAM,
-                    "Workflow stages initialization conflict for task " + taskId + "; retry after existing stages are completed");
+                    "任务阶段初始化发生冲突，请刷新后重试。任务 ID：" + taskId);
         }
 
         List<WorkflowStage> initializedStages = selectTaskStages(taskId);
         validateStageKeys(taskId, templateId, initializedStages, templateStages);
         if (!hasAllTemplateStages(initializedStages, templateStages)) {
             throw new BusinessException(ErrorCode.INVALID_PARAM,
-                    "Workflow stages initialization incomplete for task " + taskId);
+                    "任务阶段初始化不完整，请刷新后重试。任务 ID：" + taskId);
         }
         log.info("[STAGE] init completed taskId={} templateId={} stageCount={}",
                 taskId, templateId, initializedStages.size());
@@ -170,9 +170,9 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
             WorkflowStage existingStage = findStageByOrder(existingStages, templateStage.getStageOrder());
             if (existingStage != null && !templateStage.getStageKey().equals(existingStage.getStageKey())) {
                 throw new BusinessException(ErrorCode.INVALID_PARAM,
-                        "Workflow stage config/data conflict for task " + taskId + ", template " + templateId
-                                + ": stage order " + templateStage.getStageOrder() + " expected key "
-                                + templateStage.getStageKey() + " but found " + existingStage.getStageKey());
+                        "任务阶段数据与模板配置冲突：第 " + templateStage.getStageOrder()
+                                + " 个阶段应为 " + templateStage.getStageKey()
+                                + "，实际为 " + existingStage.getStageKey());
             }
         }
     }
@@ -211,7 +211,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
     public WorkflowStageResponse startStage(Long taskId, Long stageId) {
         WorkflowTask task = loadMutableTask(taskId, "stage start");
         WorkflowStage stage = loadTaskStage(task.getId(), stageId);
-        requireStatus(stage, StageStatus.PENDING, "Only PENDING stage can be started");
+        requireStatus(stage, StageStatus.PENDING, "只有待开始阶段才能开始");
         stage.setStatus(StageStatus.RUNNING);
         stage.setStartedAt(LocalDateTime.now());
         workflowStageMapper.updateById(stage);
@@ -225,7 +225,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
     public WorkflowStageResponse completeStage(Long taskId, Long stageId, StageOutputRequest request) {
         WorkflowTask task = loadMutableTask(taskId, "stage complete");
         WorkflowStage stage = loadTaskStage(task.getId(), stageId);
-        requireStatus(stage, StageStatus.RUNNING, "Only RUNNING stage can be completed");
+        requireStatus(stage, StageStatus.RUNNING, "只有执行中阶段才能完成");
         if (request != null && hasAnyOutput(request)) {
             stage.setOutputSummary(toOutputParts(request).format());
         }
@@ -242,7 +242,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
     public WorkflowStageResponse skipStage(Long taskId, Long stageId) {
         WorkflowTask task = loadMutableTask(taskId, "stage skip");
         WorkflowStage stage = loadTaskStage(task.getId(), stageId);
-        requireStatus(stage, StageStatus.PENDING, "Only PENDING stage can be skipped");
+        requireStatus(stage, StageStatus.PENDING, "只有待开始阶段才能跳过");
         WorkflowTemplateStage templateStage = loadTemplateStage(stage);
         if (isHighRiskTask(task) && ("analysis".equals(stage.getStageKey()) || "risk_review".equals(stage.getStageKey()))) {
             throw new BusinessException(ErrorCode.INVALID_PARAM, "高风险任务不能跳过关键阶段：" + stageDisplayName(stage));
@@ -262,7 +262,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
     public WorkflowStageResponse failStage(Long taskId, Long stageId, StageOutputRequest request) {
         WorkflowTask task = loadMutableTask(taskId, "stage fail");
         WorkflowStage stage = loadTaskStage(task.getId(), stageId);
-        requireStatus(stage, StageStatus.RUNNING, "Only RUNNING stage can be marked as failed");
+        requireStatus(stage, StageStatus.RUNNING, "只有执行中阶段才能标记失败");
         if (request != null && hasAnyOutput(request)) {
             stage.setOutputSummary(toOutputParts(request).format());
         }
@@ -280,7 +280,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         WorkflowTask task = loadMutableTask(taskId, "stage output update");
         WorkflowStage stage = loadTaskStage(task.getId(), stageId);
         if (request == null || !hasAnyOutput(request)) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "Stage output must not be blank");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "阶段输出不能为空。");
         }
         StageOutputParts outputParts = toOutputParts(request);
         stage.setOutputSummary(outputParts.format());
@@ -305,32 +305,32 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
         WorkflowTask task = loadExistingTask(taskId);
         if (TaskStatus.ARCHIVED.equals(task.getStatus()) || TaskStatus.CANCELED.equals(task.getStatus())) {
             throw new BusinessException(ErrorCode.INVALID_PARAM,
-                    "Task status does not allow " + action + ": " + task.getStatus());
+                    "当前任务状态不允许执行该阶段操作：" + task.getStatus());
         }
         return task;
     }
 
     private WorkflowTask loadExistingTask(Long taskId) {
         if (taskId == null || taskId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "taskId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务 ID 必须大于等于 1。");
         }
         WorkflowTask task = workflowTaskMapper.selectOne(new LambdaQueryWrapper<WorkflowTask>()
                 .eq(WorkflowTask::getId, taskId));
         if (task == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Task not found: " + taskId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务不存在：" + taskId);
         }
         return task;
     }
 
     private WorkflowStage loadTaskStage(Long taskId, Long stageId) {
         if (stageId == null || stageId < 1) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, "stageId must be greater than or equal to 1");
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "阶段 ID 必须大于等于 1。");
         }
         WorkflowStage stage = workflowStageMapper.selectOne(new LambdaQueryWrapper<WorkflowStage>()
                 .eq(WorkflowStage::getId, stageId)
                 .eq(WorkflowStage::getTaskId, taskId));
         if (stage == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Workflow stage not found: " + stageId);
+            throw new BusinessException(ErrorCode.NOT_FOUND, "任务阶段不存在：" + stageId);
         }
         return stage;
     }
@@ -345,7 +345,7 @@ public class WorkflowStageServiceImpl implements WorkflowStageService {
 
     private void requireStatus(WorkflowStage stage, StageStatus expectedStatus, String message) {
         if (!expectedStatus.equals(stage.getStatus())) {
-            throw new BusinessException(ErrorCode.INVALID_PARAM, message + ", current status: " + stage.getStatus());
+            throw new BusinessException(ErrorCode.INVALID_PARAM, message + "，当前状态：" + stage.getStatus());
         }
     }
 
