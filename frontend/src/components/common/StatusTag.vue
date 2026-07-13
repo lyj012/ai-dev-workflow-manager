@@ -1,8 +1,8 @@
 <template>
-  <el-tag :type="tagType" effect="plain">
+  <span :class="['status-tag', `status-tag--${statusClass}`]">
     <el-icon class="status-icon"><component :is="icon" /></el-icon>
     {{ label }}
-  </el-tag>
+  </span>
 </template>
 
 <script setup lang="ts">
@@ -20,12 +20,7 @@ const label = computed(() => {
   return labelOf(options, props.value as never)
 })
 
-const tagType = computed(() => {
-  if (props.value === 'COMPLETED' || props.value === 'DELIVERED' || props.value === 'SUCCESS') return 'success'
-  if (props.value === 'FAILED' || props.value === 'CANCELED') return 'danger'
-  if (props.value === 'RUNNING' || props.value === 'TESTING' || props.value === 'EXECUTING' || props.value === 'ANALYZING') return 'warning'
-  return 'info'
-})
+const statusClass = computed(() => String(props.value || 'unknown').toLowerCase())
 
 const icon = computed(() => {
   if (props.value === 'COMPLETED' || props.value === 'DELIVERED' || props.value === 'SUCCESS') return CircleCheck
@@ -36,7 +31,49 @@ const icon = computed(() => {
 </script>
 
 <style scoped>
+.status-tag {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .status-icon {
   margin-right: 4px;
+}
+
+.status-tag--success,
+.status-tag--completed,
+.status-tag--delivered {
+  background: var(--app-success-soft);
+  color: var(--app-success);
+}
+
+.status-tag--failed,
+.status-tag--canceled {
+  background: var(--app-danger-soft);
+  color: var(--app-danger);
+}
+
+.status-tag--analyzing,
+.status-tag--running,
+.status-tag--executing,
+.status-tag--testing {
+  background: var(--app-warning-soft);
+  color: var(--app-warning);
+}
+
+.status-tag--created,
+.status-tag--pending,
+.status-tag--draft,
+.status-tag--skipped,
+.status-tag--archived,
+.status-tag--unknown {
+  background: var(--app-info-soft);
+  color: var(--app-info);
 }
 </style>

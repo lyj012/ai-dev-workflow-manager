@@ -91,22 +91,23 @@ defineEmits<{
   gap: 6px;
   align-items: center;
   padding: 4px;
-  border: 1px solid #dfe8f5;
+  border: 1px solid var(--app-border-soft);
   border-radius: 8px;
-  background: #f8fbff;
+  background: #f8fafc;
 }
 
 .stage-action-btn {
   width: 46px;
   margin-left: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   box-shadow: none;
+  font-weight: 800;
 }
 
 .stage-action-btn.is-disabled {
   border-color: transparent;
   background: transparent;
-  color: #a8b3c4;
+  color: var(--app-subtle);
 }
 
 .stage-actions__meta {

@@ -8,24 +8,30 @@
           <div class="brand-subtitle">AI 异步任务平台</div>
         </div>
       </div>
+      <div class="nav-label">工作台</div>
       <el-menu :default-active="activeMenu" router class="nav-menu">
         <el-menu-item index="/dashboard">
           <el-icon><HomeFilled /></el-icon>
           <span>概览</span>
         </el-menu-item>
-        <el-menu-item index="/tasks">
-          <el-icon><Document /></el-icon>
-          <span>任务管理</span>
-        </el-menu-item>
         <el-menu-item index="/ai-tasks">
           <el-icon><Cpu /></el-icon>
           <span>AI 任务</span>
+          <span class="nav-badge">4</span>
+        </el-menu-item>
+        <el-menu-item index="/tasks">
+          <el-icon><Document /></el-icon>
+          <span>任务管理</span>
         </el-menu-item>
         <el-menu-item index="/templates">
           <el-icon><Share /></el-icon>
           <span>Workflow 模板</span>
         </el-menu-item>
       </el-menu>
+      <div class="runtime-card">
+        <div class="runtime-row"><span class="runtime-dot" />Mock 运行环境</div>
+        <p>保留真实接口字段，支持本地 mock 演示。</p>
+      </div>
       <div class="team-panel">
         <span class="team-avatar">AI</span>
         <div>
@@ -38,7 +44,11 @@
 
     <el-container>
       <el-header class="app-header">
-        <div class="header-title">{{ currentTitle }}</div>
+        <div class="breadcrumb">
+          <span>开发工作流</span>
+          <span>/</span>
+          <strong>{{ currentTitle }}</strong>
+        </div>
         <div class="mock-pill"><span class="mock-dot" />Mock 优先</div>
       </el-header>
       <el-main class="app-main">

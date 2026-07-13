@@ -1,8 +1,18 @@
 <template>
-  <el-table :data="tasks" row-key="id">
-    <el-table-column prop="title" label="任务标题" min-width="230" show-overflow-tooltip />
+  <el-table :data="tasks" row-key="id" empty-text="暂无任务">
+    <el-table-column label="任务" min-width="280">
+      <template #default="{ row }">
+        <div class="task-title-cell">
+          <span class="task-id">#{{ row.id }}</span>
+          <div>
+            <strong>{{ row.title }}</strong>
+            <span>{{ row.description }}</span>
+          </div>
+        </div>
+      </template>
+    </el-table-column>
     <el-table-column label="任务类型" width="120">
-      <template #default="{ row }">{{ labelOf(taskTypeOptions, row.taskType) }}</template>
+      <template #default="{ row }"><span class="type-chip">{{ labelOf(taskTypeOptions, row.taskType) }}</span></template>
     </el-table-column>
     <el-table-column label="复杂度" width="110">
       <template #default="{ row }">{{ labelOf(complexityOptions, row.complexity) }}</template>
@@ -13,7 +23,7 @@
     <el-table-column label="状态" width="110">
       <template #default="{ row }"><StatusTag :value="row.status" /></template>
     </el-table-column>
-    <el-table-column prop="matchedTemplateName" label="命中 workflow" min-width="160" show-overflow-tooltip />
+    <el-table-column prop="matchedTemplateName" label="命中 workflow" min-width="170" show-overflow-tooltip />
     <el-table-column label="测试清单" width="130">
       <template #default="{ row }">
         <span :class="['check-state', row.testChecklistGenerated ? 'check-state--done' : 'check-state--todo']">
@@ -25,7 +35,7 @@
     <el-table-column label="更新时间" width="180">
       <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
     </el-table-column>
-    <el-table-column label="操作" width="130" fixed="right">
+    <el-table-column label="操作" width="130" fixed="right" align="right">
       <template #default="{ row }">
         <el-button link type="primary" @click="$emit('detail', row.id)">
           查看详情
@@ -49,6 +59,53 @@ defineEmits<{ detail: [id: number] }>()
 </script>
 
 <style scoped>
+.task-title-cell {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.task-id {
+  display: inline-flex;
+  min-width: 46px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #eef4ff;
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.task-title-cell strong {
+  display: block;
+  color: var(--app-text);
+}
+
+.task-title-cell span:last-child {
+  display: block;
+  max-width: 520px;
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--app-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.type-chip {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .check-state {
   display: inline-flex;
   gap: 5px;
