@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Refresh } from '@element-plus/icons-vue'
@@ -100,9 +100,32 @@ const retrying = ref(false)
 const task = ref<AiTask>()
 const logs = ref<AiTaskLog[]>([])
 const result = ref<AiTaskResult | null>(null)
+const pollingTimer = ref<number>()
+let disposed = false
 
-async function loadAll() {
-  loading.value = true
+function shouldPoll(status?: AiTask['status']) {
+  return status === 'CREATED' || status === 'ANALYZING'
+}
+
+function stopPolling() {
+  if (pollingTimer.value) {
+    window.clearTimeout(pollingTimer.value)
+    pollingTimer.value = undefined
+  }
+}
+
+function schedulePolling() {
+  stopPolling()
+  if (disposed || !shouldPoll(task.value?.status)) return
+  pollingTimer.value = window.setTimeout(() => {
+    void loadAll(false)
+  }, 1500)
+}
+
+async function loadAll(showLoading = true) {
+  if (showLoading) {
+    loading.value = true
+  }
   try {
     const [detail, detailLogs, detailResult] = await Promise.all([
       fetchAiTaskDetail(id.value),
@@ -113,7 +136,10 @@ async function loadAll() {
     logs.value = detailLogs
     result.value = detailResult
   } finally {
-    loading.value = false
+    if (showLoading) {
+      loading.value = false
+    }
+    schedulePolling()
   }
 }
 
@@ -129,7 +155,14 @@ async function handleRetry() {
   }
 }
 
-onMounted(loadAll)
+onMounted(() => {
+  void loadAll()
+})
+
+onUnmounted(() => {
+  disposed = true
+  stopPolling()
+})
 </script>
 
 <style scoped>

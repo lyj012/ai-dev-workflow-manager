@@ -20,15 +20,21 @@ import com.aidev.workflowmanager.common.page.PageResult;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,37 +42,57 @@ public class AiTaskServiceImpl implements AiTaskService {
 
     private static final Logger log = LoggerFactory.getLogger(AiTaskServiceImpl.class);
     private static final long MOCK_ANALYSIS_DELAY_MILLIS = 3000L;
+    private static final long STALE_CREATED_SECONDS = 30L;
+    private static final long STALE_ANALYZING_MINUTES = 5L;
+    private static final int RECOVERY_BATCH_SIZE = 20;
+    private static final String DISPATCH_REJECTED_MESSAGE = "AI 任务执行队列已满，请稍后重试。";
+    private static final String EXECUTION_TIMEOUT_MESSAGE = "AI 任务执行超时，请重试。";
 
     private final AiTaskMapper aiTaskMapper;
     private final AiTaskLogMapper aiTaskLogMapper;
     private final AiTaskResultMapper aiTaskResultMapper;
     private final TaskExecutor aiTaskExecutor;
+    private final TransactionOperations transactionOperations;
+
+    @Autowired
+    public AiTaskServiceImpl(AiTaskMapper aiTaskMapper,
+                             AiTaskLogMapper aiTaskLogMapper,
+                             AiTaskResultMapper aiTaskResultMapper,
+                             @Qualifier("aiTaskExecutor") TaskExecutor aiTaskExecutor,
+                             PlatformTransactionManager transactionManager) {
+        this(aiTaskMapper, aiTaskLogMapper, aiTaskResultMapper, aiTaskExecutor, new TransactionTemplate(transactionManager));
+    }
 
     public AiTaskServiceImpl(AiTaskMapper aiTaskMapper,
                              AiTaskLogMapper aiTaskLogMapper,
                              AiTaskResultMapper aiTaskResultMapper,
-                             @Qualifier("aiTaskExecutor") TaskExecutor aiTaskExecutor) {
+                             TaskExecutor aiTaskExecutor,
+                             TransactionOperations transactionOperations) {
         this.aiTaskMapper = aiTaskMapper;
         this.aiTaskLogMapper = aiTaskLogMapper;
         this.aiTaskResultMapper = aiTaskResultMapper;
         this.aiTaskExecutor = aiTaskExecutor;
+        this.transactionOperations = transactionOperations;
     }
 
     @Override
     public AiTaskResponse create(CreateAiTaskRequest request) {
-        AiTask task = new AiTask();
-        task.setTitle(normalizeRequired(request.getTitle(), "任务标题不能为空。"));
-        task.setRequirement(normalizeRequired(request.getRequirement(), "需求描述不能为空。"));
-        task.setTaskType(request.getTaskType());
-        task.setRemark(trimToNull(request.getRemark()));
-        task.setStatus(AiTaskStatus.CREATED);
-        task.setRetryCount(0);
-        LocalDateTime now = LocalDateTime.now();
-        task.setCreatedAt(now);
-        task.setUpdatedAt(now);
-        task.setDeleted(0);
-        aiTaskMapper.insert(task);
-        appendLog(task.getId(), AiTaskLogLevel.INFO, "TASK_CREATED", "任务已创建。");
+        AiTask task = transactionOperations.execute(status -> {
+            AiTask newTask = new AiTask();
+            newTask.setTitle(normalizeRequired(request.getTitle(), "任务标题不能为空。"));
+            newTask.setRequirement(normalizeRequired(request.getRequirement(), "需求描述不能为空。"));
+            newTask.setTaskType(request.getTaskType());
+            newTask.setRemark(trimToNull(request.getRemark()));
+            newTask.setStatus(AiTaskStatus.CREATED);
+            newTask.setRetryCount(0);
+            LocalDateTime now = LocalDateTime.now();
+            newTask.setCreatedAt(now);
+            newTask.setUpdatedAt(now);
+            newTask.setDeleted(0);
+            aiTaskMapper.insert(newTask);
+            appendLog(newTask.getId(), AiTaskLogLevel.INFO, "TASK_CREATED", "任务已创建。");
+            return newTask;
+        });
         log.info("[AI_TASK] created taskId={} title={} type={}", task.getId(), task.getTitle(), task.getTaskType());
         submitExecution(task.getId());
         return AiTaskResponse.from(task);
@@ -121,54 +147,117 @@ public class AiTaskServiceImpl implements AiTaskService {
             throw new BusinessException(ErrorCode.INVALID_PARAM, "只有执行失败的 AI 任务可以重试。");
         }
         int retryCount = task.getRetryCount() == null ? 1 : task.getRetryCount() + 1;
-        aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
-                .eq(AiTask::getId, taskId)
-                .eq(AiTask::getStatus, AiTaskStatus.FAILED)
-                .set(AiTask::getStatus, AiTaskStatus.CREATED)
-                .set(AiTask::getRetryCount, retryCount)
-                .set(AiTask::getErrorMessage, null));
-        appendLog(taskId, AiTaskLogLevel.INFO, "TASK_RETRY", "用户触发失败任务重试。");
+        boolean updated = Boolean.TRUE.equals(transactionOperations.execute(status -> {
+            int rows = aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
+                    .eq(AiTask::getId, taskId)
+                    .eq(AiTask::getStatus, AiTaskStatus.FAILED)
+                    .set(AiTask::getStatus, AiTaskStatus.CREATED)
+                    .set(AiTask::getRetryCount, retryCount)
+                    .set(AiTask::getErrorMessage, null)
+                    .set(AiTask::getUpdatedAt, LocalDateTime.now()));
+            if (rows <= 0) {
+                return false;
+            }
+            appendLog(taskId, AiTaskLogLevel.INFO, "TASK_RETRY", "用户触发失败任务重试。");
+            return true;
+        }));
+        if (!updated) {
+            throw new BusinessException(ErrorCode.INVALID_PARAM, "任务状态已变化，请刷新后重试。");
+        }
         log.info("[AI_TASK] retry submitted taskId={} retryCount={}", taskId, retryCount);
         submitExecution(taskId);
         return detail(taskId);
     }
 
+    @Scheduled(fixedDelay = 60000L, initialDelay = 60000L)
+    public void recoverStaleTasks() {
+        LocalDateTime now = LocalDateTime.now();
+        List<AiTask> staleCreatedTasks = aiTaskMapper.selectList(new LambdaQueryWrapper<AiTask>()
+                .eq(AiTask::getStatus, AiTaskStatus.CREATED)
+                .lt(AiTask::getUpdatedAt, now.minusSeconds(STALE_CREATED_SECONDS))
+                .orderByAsc(AiTask::getUpdatedAt)
+                .last("LIMIT " + RECOVERY_BATCH_SIZE));
+        for (AiTask task : staleCreatedTasks) {
+            log.warn("[AI_TASK] recovering stale created taskId={}", task.getId());
+            submitExecution(task.getId());
+        }
+
+        List<AiTask> staleAnalyzingTasks = aiTaskMapper.selectList(new LambdaQueryWrapper<AiTask>()
+                .eq(AiTask::getStatus, AiTaskStatus.ANALYZING)
+                .lt(AiTask::getUpdatedAt, now.minusMinutes(STALE_ANALYZING_MINUTES))
+                .orderByAsc(AiTask::getUpdatedAt)
+                .last("LIMIT " + RECOVERY_BATCH_SIZE));
+        for (AiTask task : staleAnalyzingTasks) {
+            markFailed(task.getId(), EXECUTION_TIMEOUT_MESSAGE);
+        }
+    }
+
     private void submitExecution(Long taskId) {
-        aiTaskExecutor.execute(() -> runMockAnalysis(taskId));
+        try {
+            aiTaskExecutor.execute(() -> runMockAnalysis(taskId));
+        } catch (RejectedExecutionException ex) {
+            markDispatchRejected(taskId);
+            log.warn("[AI_TASK] execution rejected taskId={}", taskId, ex);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, DISPATCH_REJECTED_MESSAGE);
+        }
     }
 
     private void runMockAnalysis(Long taskId) {
         try {
-            boolean started = aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
-                    .eq(AiTask::getId, taskId)
-                    .eq(AiTask::getStatus, AiTaskStatus.CREATED)
-                    .set(AiTask::getStatus, AiTaskStatus.ANALYZING)
-                    .set(AiTask::getErrorMessage, null)) > 0;
-            if (!started) {
+            if (!markAnalyzing(taskId)) {
                 log.info("[AI_TASK] execution skipped taskId={} reason=status-not-created", taskId);
                 return;
             }
-            appendLog(taskId, AiTaskLogLevel.INFO, "TASK_ANALYZING", "开始模拟 AI 分析。");
             Thread.sleep(MOCK_ANALYSIS_DELAY_MILLIS);
 
             AiTask task = requireTask(taskId);
             if (shouldMockFail(task)) {
                 throw new IllegalStateException("模拟分析失败：需求描述触发失败场景。");
             }
-            saveResult(task);
-            aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
-                    .eq(AiTask::getId, taskId)
-                    .eq(AiTask::getStatus, AiTaskStatus.ANALYZING)
-                    .set(AiTask::getStatus, AiTaskStatus.SUCCESS)
-                    .set(AiTask::getErrorMessage, null));
-            appendLog(taskId, AiTaskLogLevel.INFO, "TASK_SUCCESS", "模拟分析完成。");
-            log.info("[AI_TASK] execution success taskId={}", taskId);
+            if (markSuccess(task)) {
+                log.info("[AI_TASK] execution success taskId={}", taskId);
+            } else {
+                log.warn("[AI_TASK] success skipped taskId={} reason=status-not-analyzing", taskId);
+            }
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             markFailed(taskId, "模拟分析被中断。");
         } catch (Exception ex) {
             markFailed(taskId, ex.getMessage());
         }
+    }
+
+    private boolean markAnalyzing(Long taskId) {
+        return Boolean.TRUE.equals(transactionOperations.execute(status -> {
+            boolean started = aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
+                    .eq(AiTask::getId, taskId)
+                    .eq(AiTask::getStatus, AiTaskStatus.CREATED)
+                    .set(AiTask::getStatus, AiTaskStatus.ANALYZING)
+                    .set(AiTask::getErrorMessage, null)
+                    .set(AiTask::getUpdatedAt, LocalDateTime.now())) > 0;
+            if (!started) {
+                return false;
+            }
+            appendLog(taskId, AiTaskLogLevel.INFO, "TASK_ANALYZING", "开始模拟 AI 分析。");
+            return true;
+        }));
+    }
+
+    private boolean markSuccess(AiTask task) {
+        return Boolean.TRUE.equals(transactionOperations.execute(status -> {
+            int rows = aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
+                    .eq(AiTask::getId, task.getId())
+                    .eq(AiTask::getStatus, AiTaskStatus.ANALYZING)
+                    .set(AiTask::getStatus, AiTaskStatus.SUCCESS)
+                    .set(AiTask::getErrorMessage, null)
+                    .set(AiTask::getUpdatedAt, LocalDateTime.now()));
+            if (rows <= 0) {
+                return false;
+            }
+            saveResult(task);
+            appendLog(task.getId(), AiTaskLogLevel.INFO, "TASK_SUCCESS", "模拟分析完成。");
+            return true;
+        }));
     }
 
     private void saveResult(AiTask task) {
@@ -190,13 +279,38 @@ public class AiTaskServiceImpl implements AiTaskService {
 
     private void markFailed(Long taskId, String message) {
         String errorMessage = StringUtils.hasText(message) ? message : "模拟分析失败。";
-        aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
-                .eq(AiTask::getId, taskId)
-                .eq(AiTask::getStatus, AiTaskStatus.ANALYZING)
-                .set(AiTask::getStatus, AiTaskStatus.FAILED)
-                .set(AiTask::getErrorMessage, errorMessage));
-        appendLog(taskId, AiTaskLogLevel.ERROR, "TASK_FAILED", errorMessage);
-        log.warn("[AI_TASK] execution failed taskId={} message={}", taskId, errorMessage);
+        boolean updated = Boolean.TRUE.equals(transactionOperations.execute(status -> {
+            int rows = aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
+                    .eq(AiTask::getId, taskId)
+                    .eq(AiTask::getStatus, AiTaskStatus.ANALYZING)
+                    .set(AiTask::getStatus, AiTaskStatus.FAILED)
+                    .set(AiTask::getErrorMessage, errorMessage)
+                    .set(AiTask::getUpdatedAt, LocalDateTime.now()));
+            if (rows <= 0) {
+                return false;
+            }
+            appendLog(taskId, AiTaskLogLevel.ERROR, "TASK_FAILED", errorMessage);
+            return true;
+        }));
+        if (updated) {
+            log.warn("[AI_TASK] execution failed taskId={} message={}", taskId, errorMessage);
+        } else {
+            log.warn("[AI_TASK] failure skipped taskId={} reason=status-not-analyzing message={}", taskId, errorMessage);
+        }
+    }
+
+    private void markDispatchRejected(Long taskId) {
+        transactionOperations.executeWithoutResult(status -> {
+            int rows = aiTaskMapper.update(null, new LambdaUpdateWrapper<AiTask>()
+                    .eq(AiTask::getId, taskId)
+                    .eq(AiTask::getStatus, AiTaskStatus.CREATED)
+                    .set(AiTask::getStatus, AiTaskStatus.FAILED)
+                    .set(AiTask::getErrorMessage, DISPATCH_REJECTED_MESSAGE)
+                    .set(AiTask::getUpdatedAt, LocalDateTime.now()));
+            if (rows > 0) {
+                appendLog(taskId, AiTaskLogLevel.ERROR, "TASK_FAILED", DISPATCH_REJECTED_MESSAGE);
+            }
+        });
     }
 
     private boolean shouldMockFail(AiTask task) {
